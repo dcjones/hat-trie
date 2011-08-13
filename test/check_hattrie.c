@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include "../src/hattrie.h"
+#include "../src/hat-trie.h"
 
 /* Simple random string generation. */
 void randstr(char* x, size_t len)

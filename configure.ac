@@ -21,6 +21,6 @@ AC_TYPE_UINT16_T
 AC_TYPE_UINT32_T
 AC_TYPE_UINT8_T
 
-AC_CONFIG_FILES([Makefile src/Makefile test/Makefile])
+AC_CONFIG_FILES([hat-trie-0.1.pc Makefile src/Makefile test/Makefile])
 AC_OUTPUT
 

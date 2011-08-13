@@ -1,5 +1,5 @@
 
-#include "hattrie.h"
+#include "hat-trie.h"
 #include "ahtable.h"
 #include "misc.h"
 #include <assert.h>
