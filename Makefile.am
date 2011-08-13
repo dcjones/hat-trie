@@ -1,5 +1,9 @@
 
-SUBDIRS = src
+if WITH_TEST
+TESTDIR = test
+endif
+
+SUBDIRS = src $(TESTDIR)
 
 EXTRA_DIST = README.md COPYING
 

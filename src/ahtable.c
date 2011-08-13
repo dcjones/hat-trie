@@ -1,6 +1,6 @@
 
 
-#include "array-hash.h"
+#include "ahtable.h"
 #include "misc.h"
 #include "superfasthash.h"
 #include "config.h"
