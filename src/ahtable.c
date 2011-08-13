@@ -12,27 +12,19 @@ static const size_t   INITIAL_SIZE     = 8;
 static const double   MAX_LOAD_FACTOR  = 10.0;
 static const uint16_t LONG_KEYLEN_MASK = 0x7fff;
 
-typedef unsigned char* slot_t;
 
-struct ahtable_
-{
-    size_t n; // number of slots
-    size_t m; // numbur of key/value pairs stored
-    size_t max_m; // number of stored key before we resize
-    slot_t* slots;
-};
-
-
-
-ahtable* ahtable_create()
+ahtable_t* ahtable_create()
 {
     return ahtable_create_n(INITIAL_SIZE);
 }
 
 
-ahtable* ahtable_create_n(size_t n)
+ahtable_t* ahtable_create_n(size_t n)
 {
-    ahtable* T = malloc_or_die(sizeof(ahtable));
+    ahtable_t* T = malloc_or_die(sizeof(ahtable_t));
+    T->flag = 0;
+    T->c0 = T->c1 = '\0';
+
     T->n = n;
     T->m = 0;
     T->max_m = (size_t) (MAX_LOAD_FACTOR * (double) T->n);
@@ -42,7 +34,7 @@ ahtable* ahtable_create_n(size_t n)
 }
 
 
-void ahtable_free(ahtable* T)
+void ahtable_free(ahtable_t* T)
 {
     size_t i;
     for (i = 0; i < T->n; ++i) free(T->slots[i]);
@@ -51,15 +43,25 @@ void ahtable_free(ahtable* T)
 }
 
 
-ahtable* ahtable_dup(const ahtable* T)
+ahtable_t* ahtable_dup(const ahtable_t* T)
 {
-    ahtable* S = ahtable_create_n(T->n);
+    ahtable_t* S = ahtable_create_n(T->n);
     memcpy(S->slots, T->slots, T->n * sizeof(slot_t));
+    S->flag   = T->flag;
+    S->c0     = T->c0;
+    S->c1     = T->c1;
+    S->m      = T->m;
     return S;
 }
 
 
-void ahtable_clear(ahtable* T)
+size_t ahtable_size(const ahtable_t* T)
+{
+    return T->m;
+}
+
+
+void ahtable_clear(ahtable_t* T)
 {
     size_t i;
     for (i = 0; i < T->n; ++i) free(T->slots[i]);
@@ -96,7 +98,7 @@ static slot_t ins_key(slot_t s, const char* key, size_t len, value_t** val)
 }
 
 
-static void ahtable_expand(ahtable* T)
+static void ahtable_expand(ahtable_t* T)
 {
     /* Resizing a table is essentially building a brand new one.
      * One little shortcut we can take on the memory allocation front is to
@@ -167,7 +169,7 @@ static void ahtable_expand(ahtable* T)
 }
 
 
-static value_t* get_key(ahtable* T, const char* key, size_t len, bool insert_missing)
+static value_t* get_key(ahtable_t* T, const char* key, size_t len, bool insert_missing)
 {
     /* if we are at capacity, preemptively resize */
     if (insert_missing && T->m >= T->max_m) {
@@ -251,13 +253,13 @@ static value_t* get_key(ahtable* T, const char* key, size_t len, bool insert_mis
 }
 
 
-value_t* ahtable_get (ahtable* T, const char* key)
+value_t* ahtable_get (ahtable_t* T, const char* key)
 {
     return get_key(T, key, strlen(key), true);
 }
 
 
-value_t* ahtable_tryget (ahtable* T, const char* key)
+value_t* ahtable_tryget (ahtable_t* T, const char* key)
 {
     return get_key(T, key, strlen(key), false);
 }
@@ -266,14 +268,14 @@ value_t* ahtable_tryget (ahtable* T, const char* key)
 
 struct ahtable_iter_t_
 {
-    const ahtable* T; // parent
-    size_t i;         // slot index
-    slot_t s;         // slot position
+    const ahtable_t* T; // parent
+    size_t i;           // slot index
+    slot_t s;           // slot position
 };
 
 
 
-ahtable_iter_t* ahtable_iter_begin(const ahtable* T)
+ahtable_iter_t* ahtable_iter_begin(const ahtable_t* T)
 {
     ahtable_iter_t* i = malloc_or_die(sizeof(ahtable_iter_t));
     i->T = T;
