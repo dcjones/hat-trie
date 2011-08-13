@@ -253,15 +253,15 @@ static value_t* get_key(ahtable_t* T, const char* key, size_t len, bool insert_m
 }
 
 
-value_t* ahtable_get (ahtable_t* T, const char* key)
+value_t* ahtable_get (ahtable_t* T, const char* key, size_t len)
 {
-    return get_key(T, key, strlen(key), true);
+    return get_key(T, key, len, true);
 }
 
 
-value_t* ahtable_tryget (ahtable_t* T, const char* key)
+value_t* ahtable_tryget (ahtable_t* T, const char* key, size_t len )
 {
-    return get_key(T, key, strlen(key), false);
+    return get_key(T, key, len, false);
 }
 
 
@@ -311,10 +311,12 @@ void ahtable_iter_next(ahtable_iter_t* i)
     i->s += k + sizeof(value_t);
 
     if (*i->s == '\0') {
-        while (i->i < i->T->n && (i->s == NULL || *i->s == '\0')) {
+        do {
             ++i->i;
-            i->s = i->T->slots[i->i];
-        }
+        } while(i->i < i->T->n &&
+                (i->T->slots[i->i] == NULL || *i->T->slots[i->i] == '\0'));
+
+        if (i->i < i->T->n) i->s = i->T->slots[i->i];
     }
 }
 

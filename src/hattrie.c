@@ -32,6 +32,7 @@ typedef struct trie_node_t_
 
     /* the value for the key that is consumed on a trie node */
     value_t val;
+    bool    has_val;
 
     /* Map a character to either a trie_node_t or a ahtable_t. The first byte
      * must be examined to determine which. */
@@ -40,11 +41,14 @@ typedef struct trie_node_t_
 } trie_node_t;
 
 
+/* Create a new trie node with all pointer pointing to the given child (which
+ * can be NULL). */
 static trie_node_t* alloc_trie_node(node_ptr child)
 {
     trie_node_t* node = malloc_or_die(sizeof(trie_node_t));
     node->flag = NODE_TYPE_TRIE;
-    node->val  = 0;
+    node->val     = 0;
+    node->has_val = false;
 
     size_t i;
     for (i = 0; i < 256; ++i) node->xs[i] = child;
@@ -81,8 +85,10 @@ static void hattrie_free_node(node_ptr node)
     if (*node.flag & NODE_TYPE_TRIE) {
         size_t i;
         for (i = 0; i < 256; ++i) {
-            /* The depth of the trie is kept under control, so recursion should
-             * be safe here. */
+            if (i > 0 && node.t->xs[i].t == node.t->xs[i - 1].t) continue;
+
+            /* XXX: recursion might not be the best choice here. It is possible
+             * to build a very deep trie. */
             if (node.t->xs[i].t) hattrie_free_node(node.t->xs[i]);
         }
         free(node.t);
@@ -112,80 +118,137 @@ static void hattrie_split(node_ptr parent, node_ptr node)
     if (*node.flag & NODE_TYPE_PURE_BUCKET) {
         /* turn the pure bucket into a hybrid bucket */
         parent.t->xs[node.b->c0].t = alloc_trie_node(node);
-        node.b->c0 = 0x00;
-        node.b->c1 = 0xff;
-    }
-    else {
-        /* count the number of occourances of every leading character */
-        unsigned int cs[256]; // occurance count for leading chars
-        memset(cs, 0, 256 * sizeof(unsigned int));
-        size_t len;
-        const char* key;
+        node.b->c0   = 0x00;
+        node.b->c1   = 0xff;
+        node.b->flag = NODE_TYPE_HYBRID_BUCKET;
 
-        ahtable_iter_t* i = ahtable_iter_begin(node.b);
-        while (!ahtable_iter_finished(i)) {
-            key = ahtable_iter_key(i, &len);
-            assert(len > 0);
-            cs[(size_t) key[0]] += 1;
-            ahtable_iter_next(i);
+        /* if the bucket had an empty key, move it to the new trie node */
+        value_t* val = ahtable_tryget(node.b, NULL, 0);
+        if (val) {
+            parent.t->xs[node.b->c0].t->val     = *val;
+            parent.t->xs[node.b->c0].t->has_val = true;
+            *val = 0;
         }
-        ahtable_iter_free(i);
 
 
-        /* choose a split point */
-        unsigned int left_m, right_m;
-        size_t j = node.b->c0;
-        left_m  = cs[j];
-        right_m = ahtable_size(node.b) - left_m;
-        int d;
+        return;
+    }
 
-        while (j + 1 < node.b->c1) {
-            d = abs((int) (left_m + cs[j + 1]) - (int) (right_m - cs[j + 1]));
-            if (d <= abs(left_m - right_m)) {
-                j += 1;
-                left_m  += cs[j];
-                right_m -= cs[j];
+    /* This is a hybrid bucket. Perform a proper split. */
+
+
+    /* count the number of occourances of every leading character */
+    unsigned int cs[256]; // occurance count for leading chars
+    memset(cs, 0, 256 * sizeof(unsigned int));
+    size_t len;
+    const char* key;
+
+    ahtable_iter_t* i = ahtable_iter_begin(node.b);
+    while (!ahtable_iter_finished(i)) {
+        key = ahtable_iter_key(i, &len);
+        assert(len > 0);
+        cs[(size_t) key[0]] += 1;
+        ahtable_iter_next(i);
+    }
+    ahtable_iter_free(i);
+
+
+    /* choose a split point */
+    unsigned int left_m, right_m;
+    size_t j = node.b->c0;
+    left_m  = cs[j];
+    right_m = ahtable_size(node.b) - left_m;
+    int d;
+
+    while (j + 1 < node.b->c1) {
+        d = abs((int) (left_m + cs[j + 1]) - (int) (right_m - cs[j + 1]));
+        if (d <= abs(left_m - right_m)) {
+            j += 1;
+            left_m  += cs[j];
+            right_m -= cs[j];
+        }
+        else break;
+    }
+
+
+    /* now split into two node cooresponding to ranges [0, j] and
+     * [j + 1, 255], respectively. */
+
+
+    /* create new left and right nodes */
+
+    node_ptr left, right;
+    left.b  = ahtable_create();
+    left.b->c0   = node.b->c0;
+    left.b->c1   = (uint8_t) j;
+    left.b->flag = left.b->c0 == left.b->c1 ?
+                      NODE_TYPE_PURE_BUCKET : NODE_TYPE_HYBRID_BUCKET;
+
+    right.b = ahtable_create();
+    right.b->c0   = (uint8_t) j + 1;
+    right.b->c1   = node.b->c1;
+    right.b->flag = right.b->c0 == right.b->c1 ?
+                      NODE_TYPE_PURE_BUCKET : NODE_TYPE_HYBRID_BUCKET;
+
+
+    /* update the parent's pointer */
+
+    size_t c;
+    for (c = (size_t) node.b->c0; c <= j; ++c) parent.t->xs[c] = left;
+    for (; c <= (size_t) node.b->c1; ++c)      parent.t->xs[c] = right;
+
+
+
+    /* distribute keys to the new left or right node */
+    value_t* u;
+    value_t* v;
+    i = ahtable_iter_begin(node.b);
+    while (!ahtable_iter_finished(i)) {
+        key = ahtable_iter_key(i, &len);
+        u   = ahtable_iter_val(i);
+        assert(len > 0);
+
+        /* left */
+        if ((size_t) key[0] <= j) {
+            if (*left.flag & NODE_TYPE_PURE_BUCKET) {
+                v = ahtable_get(left.b, key + 1, len - 1);
             }
-            else break;
+            else {
+                v = ahtable_get(left.b, key, len);
+            }
+            *v = *u;
         }
 
-        /* now split into two node cooresponding to ranges [0, j] and
-         * [j + 1, 255], respectively. */
-
-        /* left is pure */
-        if (j == (size_t) node.b->c0) {
-            // TODO
-        }
-        /* left is hybrid */
+        /* right */
         else {
-            // TODO
+            if (*right.flag & NODE_TYPE_PURE_BUCKET) {
+                v = ahtable_get(right.b, key + 1, len - 1);
+            }
+            else {
+                v = ahtable_get(right.b, key, len);
+            }
+            *v = *u;
         }
-        
-        /* XXX: How can a pure node be created from a hybrid?? */
 
-        /* right is pure */
-        if (j + 1 == node.b->c1) {
-            // TODO
-        }
-        /* right is hybrid */
-        else {
-            // TODO
-        }
+        ahtable_iter_next(i);
     }
 
+    ahtable_iter_free(i);
+    ahtable_free(node.b);
 }
 
 
-value_t* hattrie_get(hattrie_t* T, const char* key)
+value_t* hattrie_get(hattrie_t* T, const char* key, size_t len)
 {
     node_ptr parent = T->root;
     assert(*parent.flag & NODE_TYPE_TRIE);
 
-    if (*key == '\0') return &parent.t->val;
+    if (len == 0) return &parent.t->val;
     node_ptr node = parent.t->xs[(size_t) *key];
 
-    while (*node.flag & NODE_TYPE_TRIE && *(key + 1) != '\0') {
+    while (*node.flag & NODE_TYPE_TRIE && len > 1) {
         ++key;
+        --len;
         parent = node;
         node   = node.t->xs[(size_t) *key];
     }
@@ -193,8 +256,13 @@ value_t* hattrie_get(hattrie_t* T, const char* key)
 
     /* if the key has been consumed on a trie node, use its value */
     if (*node.flag & NODE_TYPE_TRIE) {
+        if (!node.t->has_val) {
+            node.t->has_val = true;
+            ++T->m;
+        }
         return &node.t->val;
     }
+
 
     /* preemptively split the bucket if it is full */
     while (ahtable_size(node.b) >= MAX_BUCKET_SIZE) {
@@ -203,22 +271,67 @@ value_t* hattrie_get(hattrie_t* T, const char* key)
         /* after the split, the node pointer is invalidated, so we search from
          * the parent again. */
         node = parent.t->xs[(size_t) *key];
-        while (*node.flag & NODE_TYPE_TRIE && *(key + 1) != '\0') {
+        while (*node.flag & NODE_TYPE_TRIE && len > 1) {
             ++key;
+            --len;
             parent = node;
             node   = node.t->xs[(size_t) *key];
         }
 
         if (*node.flag & NODE_TYPE_TRIE) {
+            assert(len == 1);
+
+            if (!node.t->has_val) {
+                node.t->has_val = true;
+                ++T->m;
+            }
             return &node.t->val;
         }
     }
 
+    size_t m_old = node.b->m;
+    value_t* val;
     if (*node.flag & NODE_TYPE_PURE_BUCKET) {
-        return ahtable_get(node.b, key + 1);
+        val = ahtable_get(node.b, key + 1, len - 1);
     }
     else {
-        return ahtable_get(node.b, key);
+        val = ahtable_get(node.b, key, len);
+    }
+    T->m += (node.b->m - m_old);
+
+    return val;
+}
+
+
+value_t* hattrie_tryget(hattrie_t* T, const char* key, size_t len)
+{
+    node_ptr parent = T->root;
+    assert(*parent.flag & NODE_TYPE_TRIE);
+
+    if (len == 0) return &parent.t->val;
+    node_ptr node = parent.t->xs[(size_t) *key];
+
+    while (*node.flag & NODE_TYPE_TRIE && len > 1) {
+        ++key;
+        --len;
+        parent = node;
+        node   = node.t->xs[(size_t) *key];
+    }
+
+
+    /* if the key has been consumed on a trie node, use its value */
+    if (*node.flag & NODE_TYPE_TRIE) {
+        if (!node.t->has_val) {
+            node.t->has_val = true;
+            ++T->m;
+        }
+        return &node.t->val;
+    }
+    else if (*node.flag & NODE_TYPE_PURE_BUCKET) {
+        return ahtable_tryget(node.b, key + 1, len - 1);
+    }
+    else {
+        return ahtable_tryget(node.b, key, len);
     }
 }
 

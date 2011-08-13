@@ -58,12 +58,12 @@ size_t     ahtable_size   (const ahtable_t*); // Number of stored keys.
  * ahtable_get, ahtable_del, ahtable_clear, or other functions that modifies the
  * table.
  */
-value_t* ahtable_get (ahtable_t*, const char* key);
+value_t* ahtable_get (ahtable_t*, const char* key, size_t len);
 
 
 /** Find a given key in the table, returning a NULL pointer if it does not
  * exist. */
-value_t* ahtable_tryget (ahtable_t*, const char* key);
+value_t* ahtable_tryget (ahtable_t*, const char* key, size_t len);
 
 
 typedef struct ahtable_iter_t_ ahtable_iter_t;

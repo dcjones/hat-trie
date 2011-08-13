@@ -19,6 +19,7 @@
 #define HATTRIE_HATTRIE_H
 
 #include "common.h"
+#include <stdlib.h>
 
 typedef struct hattrie_t_ hattrie_t;
 
@@ -35,12 +36,12 @@ void       hattrie_clear  (hattrie_t*);       //< Remove all entries.
  * hattrie_get, hattrie_del, hattrie_clear, or other functions that modifies the
  * trie.
  */
-value_t* hattrie_get (hattrie_t*, const char* key);
+value_t* hattrie_get (hattrie_t*, const char* key, size_t len);
 
 
 /** Find a given key in the table, returning a NULL pointer if it does not
  * exist. */
-value_t* hattrie_tryget (hattrie_t*, const char* key);
+value_t* hattrie_tryget (hattrie_t*, const char* key, size_t len);
 
 
 #endif

@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include "../src/ahtable.h"
+#include "../src/hattrie.h"
 
 /* Simple random string generation. */
 void randstr(char* x, size_t len)
@@ -14,11 +14,11 @@ void randstr(char* x, size_t len)
 }
 
 
-const size_t n = 1000000;  // how many uniques strings
+const size_t n = 2000000;  // how many uniques strings
 const size_t m = 50;       // length of each string
 char** xs;
 int*   cs;
-ahtable_t* T;
+hattrie_t* T;
 
 void setup()
 {
@@ -32,12 +32,12 @@ void setup()
     cs = malloc(n * sizeof(int));
     memset(cs, 0, n * sizeof(int));
 
-    T = ahtable_create();
+    T = hattrie_create();
 }
 
 void teardown()
 {
-    ahtable_free(T);
+    hattrie_free(T);
 
     free(cs);
     size_t i;
@@ -48,9 +48,9 @@ void teardown()
 }
 
 
-void test_ahtable_insert()
+void test_hattrie_insert()
 {
-    size_t k = 1000000; // number of insertions
+    size_t k = 2000000; // number of insertions
     fprintf(stderr, "inserting %zu keys ... \n", k);
 
     size_t i;
@@ -59,7 +59,7 @@ void test_ahtable_insert()
     while (k--) {
         i = rand() % n;
         cs[i] += 1;
-        val = ahtable_get(T, xs[i], strlen(xs[i]));
+        val = hattrie_get(T, xs[i], strlen(xs[i]));
         *val += 1;
 
         if ((size_t) cs[i] != *val) {
@@ -76,7 +76,7 @@ void test_ahtable_insert()
 int main()
 {
     setup();
-    test_ahtable_insert();
+    test_hattrie_insert();
     teardown();
 
     return 0;
