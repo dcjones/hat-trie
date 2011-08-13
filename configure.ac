@@ -15,10 +15,6 @@ AC_PROG_LIBTOOL
 
 AC_C_BIGENDIAN([AC_MSG_ERROR([Big-endian systems are not currently supported.])])
 AC_CHECK_HEADERS([stdint.h stdlib.h])
-
-PKG_CHECK_MODULES([CHECK], [check >= 0.9.4], have_check=yes, have_check=no)
-AM_CONDITIONAL(WITH_TEST, test "$have_check" = yes)
-
 AC_HEADER_STDBOOL
 AC_TYPE_SIZE_T
 AC_TYPE_UINT16_T
