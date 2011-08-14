@@ -18,6 +18,10 @@
 #ifndef HATTRIE_HATTRIE_H
 #define HATTRIE_HATTRIE_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "common.h"
 #include <stdlib.h>
 #include <stdbool.h>
@@ -54,6 +58,9 @@ void            hattrie_iter_free      (hattrie_iter_t*);
 const char*     hattrie_iter_key       (hattrie_iter_t*, size_t* len);
 value_t*        hattrie_iter_val       (hattrie_iter_t*);
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

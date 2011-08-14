@@ -19,6 +19,10 @@
 #ifndef HATTRIE_AHTABLE_H
 #define HATTRIE_AHTABLE_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -75,6 +79,9 @@ void            ahtable_iter_free      (ahtable_iter_t*);
 const char*     ahtable_iter_key       (ahtable_iter_t*, size_t* len);
 value_t*        ahtable_iter_val       (ahtable_iter_t*);
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 
