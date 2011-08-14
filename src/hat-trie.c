@@ -160,15 +160,16 @@ static void hattrie_split(node_ptr parent, node_ptr node)
 
 
     /* choose a split point */
-    unsigned int left_m, right_m;
+    unsigned int left_m, right_m, all_m;
     size_t j = node.b->c0;
+    all_m   = ahtable_size(node.b);
     left_m  = cs[j];
-    right_m = ahtable_size(node.b) - left_m;
+    right_m = all_m - left_m;
     int d;
 
     while (j + 1 < node.b->c1) {
         d = abs((int) (left_m + cs[j + 1]) - (int) (right_m - cs[j + 1]));
-        if (d <= abs(left_m - right_m)) {
+        if (d <= abs(left_m - right_m) && left_m + cs[j + 1] < all_m) {
             j += 1;
             left_m  += cs[j];
             right_m -= cs[j];
@@ -183,14 +184,29 @@ static void hattrie_split(node_ptr parent, node_ptr node)
 
     /* create new left and right nodes */
 
+    /* TODO: Add a special case if either node is a hybrid bucket containing all
+     * the keys. In such a case, do not build a new table, just use the old one.
+     * */
+    size_t num_slots;
+
+
+    for (num_slots = ahtable_initial_size;
+            (double) left_m > ahtable_max_load_factor * (double) num_slots;
+            num_slots *= 2);
+
     node_ptr left, right;
-    left.b  = ahtable_create();
+    left.b  = ahtable_create_n(num_slots);
     left.b->c0   = node.b->c0;
     left.b->c1   = (uint8_t) j;
     left.b->flag = left.b->c0 == left.b->c1 ?
                       NODE_TYPE_PURE_BUCKET : NODE_TYPE_HYBRID_BUCKET;
 
-    right.b = ahtable_create();
+
+    for (num_slots = ahtable_initial_size;
+            (double) right_m > ahtable_max_load_factor * (double) num_slots;
+            num_slots *= 2);
+
+    right.b = ahtable_create_n(num_slots);
     right.b->c0   = (uint8_t) j + 1;
     right.b->c1   = node.b->c1;
     right.b->flag = right.b->c0 == right.b->c1 ?
@@ -467,6 +483,11 @@ hattrie_iter_t* hattrie_iter_begin(const hattrie_t* T)
         ahtable_iter_free(i->i);
         i->i = NULL;
         hattrie_iter_nextnode(i);
+    }
+
+    if (ahtable_iter_finished(i->i)) {
+        ahtable_iter_free(i->i);
+        i->i = NULL;
     }
 
     return i;

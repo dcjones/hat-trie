@@ -13,14 +13,14 @@
 #include <string.h>
 
 
-static const size_t   INITIAL_SIZE     = 8;
-static const double   MAX_LOAD_FACTOR  = 5.0;
+const double ahtable_max_load_factor = 5.0;
+const const size_t ahtable_initial_size = 8;
 static const uint16_t LONG_KEYLEN_MASK = 0x7fff;
 
 
 ahtable_t* ahtable_create()
 {
-    return ahtable_create_n(INITIAL_SIZE);
+    return ahtable_create_n(ahtable_initial_size);
 }
 
 
@@ -32,7 +32,7 @@ ahtable_t* ahtable_create_n(size_t n)
 
     T->n = n;
     T->m = 0;
-    T->max_m = (size_t) (MAX_LOAD_FACTOR * (double) T->n);
+    T->max_m = (size_t) (ahtable_max_load_factor * (double) T->n);
     T->slots = malloc_or_die(n * sizeof(slot_t));
     memset(T->slots, 0, n * sizeof(slot_t));
     return T;
@@ -70,7 +70,7 @@ void ahtable_clear(ahtable_t* T)
 {
     size_t i;
     for (i = 0; i < T->n; ++i) free(T->slots[i]);
-    T->n = INITIAL_SIZE;
+    T->n = ahtable_initial_size;
     T->slots = realloc_or_die(T->slots, T->n * sizeof(slot_t));
     memset(T->slots, 0, T->n * sizeof(slot_t));
 }
@@ -169,7 +169,7 @@ static void ahtable_expand(ahtable_t* T)
     free(T->slots);
     T->slots = slots;
     T->n = new_n;
-    T->max_m = (size_t) (MAX_LOAD_FACTOR * (double) T->n);
+    T->max_m = (size_t) (ahtable_max_load_factor * (double) T->n);
     free(slot_sizes);
 }
 
