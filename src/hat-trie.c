@@ -1,3 +1,9 @@
+/*
+ * This file is part of hat-trie.
+ *
+ * Copyright (c) 2011 by Daniel C. Jones <dcjones@cs.washington.edu>
+ *
+ */
 
 #include "hat-trie.h"
 #include "ahtable.h"
@@ -334,5 +340,223 @@ value_t* hattrie_tryget(hattrie_t* T, const char* key, size_t len)
         return ahtable_tryget(node.b, key, len);
     }
 }
+
+
+/* plan for iteration:
+ * This is tricky, as we have no parent pointers currently, and I would like to
+ * avoid adding them. That means maintaining a stack
+ *
+ */
+
+typedef struct hattrie_node_stack_t_
+{
+    char   c;
+    size_t level;
+
+    node_ptr node;
+    struct hattrie_node_stack_t_* next;
+
+} hattrie_node_stack_t;
+
+
+struct hattrie_iter_t_
+{
+    char* key;
+    size_t keysize; // space reserved for the key
+    size_t level;
+
+    /* keep track of keys stored in trie nodes */
+    bool    has_nil_key;
+    value_t nil_val;
+
+    const hattrie_t* T;
+    ahtable_iter_t* i;
+    hattrie_node_stack_t* stack;
+};
+
+
+static void hattrie_iter_pushchar(hattrie_iter_t* i, size_t level, char c)
+{
+    if (i->keysize < level) {
+        i->keysize *= 2;
+        i->key = realloc_or_die(i->key, i->keysize * sizeof(char));
+    }
+
+    if (level > 0) {
+        i->key[level - 1] = c;
+    }
+
+    i->level = level;
+}
+
+
+static void hattrie_iter_nextnode(hattrie_iter_t* i)
+{
+    if (i->stack == NULL) return;
+
+    /* pop the stack */
+    node_ptr node;
+    hattrie_node_stack_t* next;
+    char   c;
+    size_t level;
+
+    node  = i->stack->node;
+    next  = i->stack->next;
+    c     = i->stack->c;
+    level = i->stack->level;
+
+    free(i->stack);
+    i->stack = next;
+
+    if (*node.flag & NODE_TYPE_TRIE) {
+        hattrie_iter_pushchar(i, level, c);
+
+        if(node.t->has_val) {
+            i->has_nil_key = true;
+            i->nil_val = node.t->val;
+        }
+
+        /* push all child nodes from right to left */
+        int j;
+        for (j = 255; j >= 0; --j) {
+            if (j < 255 && node.t->xs[j].t == node.t->xs[j + 1].t) continue;
+
+            // push stack
+            next = i->stack;
+            i->stack = malloc_or_die(sizeof(hattrie_node_stack_t));
+            i->stack->node  = node.t->xs[j];
+            i->stack->next  = next;
+            i->stack->level = level + 1;
+            i->stack->c     = (char) j;
+        }
+    }
+    else {
+        if (*node.flag & NODE_TYPE_PURE_BUCKET) {
+            hattrie_iter_pushchar(i, level, c);
+        }
+
+        i->i = ahtable_iter_begin(node.b);
+    }
+}
+
+
+hattrie_iter_t* hattrie_iter_begin(const hattrie_t* T)
+{
+    hattrie_iter_t* i = malloc_or_die(sizeof(hattrie_iter_t));
+    i->T = T;
+    i->i = NULL;
+    i->keysize = 16;
+    i->key = malloc_or_die(i->keysize * sizeof(char));
+    i->level   = 0;
+    i->has_nil_key = false;
+    i->nil_val     = 0;
+
+    i->stack = malloc_or_die(sizeof(hattrie_node_stack_t));
+    i->stack->next   = NULL;
+    i->stack->node   = T->root;
+    i->stack->c      = '\0';
+    i->stack->level  = 0;
+
+
+    while (((i->i == NULL || ahtable_iter_finished(i->i)) && !i->has_nil_key) &&
+           i->stack != NULL ) {
+
+        ahtable_iter_free(i->i);
+        i->i = NULL;
+        hattrie_iter_nextnode(i);
+    }
+
+    return i;
+}
+
+
+
+void hattrie_iter_next(hattrie_iter_t* i)
+{
+    if (hattrie_iter_finished(i)) return;
+
+    if (i->i != NULL && !ahtable_iter_finished(i->i)) {
+        ahtable_iter_next(i->i);
+    }
+    else if (i->has_nil_key) {
+        i->has_nil_key = false;
+        i->nil_val = 0;
+        hattrie_iter_nextnode(i);
+    }
+
+    while (((i->i == NULL || ahtable_iter_finished(i->i)) && !i->has_nil_key) &&
+           i->stack != NULL ) {
+
+        ahtable_iter_free(i->i);
+        i->i = NULL;
+        hattrie_iter_nextnode(i);
+    }
+
+    if (ahtable_iter_finished(i->i)) {
+        ahtable_iter_free(i->i);
+        i->i = NULL;
+    }
+}
+
+
+
+bool hattrie_iter_finished(hattrie_iter_t* i)
+{
+    return i->stack == NULL && i->i == NULL && !i->has_nil_key;
+}
+
+
+void hattrie_iter_free(hattrie_iter_t* i)
+{
+    if (i == NULL) return;
+    if (i->i) ahtable_iter_free(i->i);
+
+    hattrie_node_stack_t* next;
+    while (i->stack) {
+        next = i->stack->next;
+        free(i->stack);
+        i->stack = next;
+    }
+
+    free(i->key);
+    free(i);
+}
+
+
+const char* hattrie_iter_key(hattrie_iter_t* i, size_t* len)
+{
+    if (hattrie_iter_finished(i)) return NULL;
+
+    size_t sublen;
+    const char* subkey;
+
+    if (i->has_nil_key) {
+        subkey = NULL;
+        sublen = 0;
+    }
+    else subkey = ahtable_iter_key(i->i, &sublen);
+
+    if (i->keysize < i->level + sublen + 1) {
+        while (i->keysize < i->level + sublen + 1) i->keysize *= 2;
+        i->key = realloc_or_die(i->key, i->keysize * sizeof(char));
+    }
+
+    memcpy(i->key + i->level, subkey, sublen);
+    i->key[i->level + sublen] = '\0';
+
+    *len = i->level + sublen;
+    return i->key;
+}
+
+
+value_t* hattrie_iter_val(hattrie_iter_t* i)
+{
+    if (i->has_nil_key) return &i->nil_val;
+
+    if (hattrie_iter_finished(i)) return NULL;
+
+    return ahtable_iter_val(i->i);
+}
+
 
 

@@ -1,5 +1,5 @@
 /*
- * This file is part of libhattrie
+ * This file is part of hat-trie
  *
  * Copyright (c) 2011 by Daniel C. Jones <dcjones@cs.washington.edu>
  *
@@ -20,6 +20,7 @@
 
 #include "common.h"
 #include <stdlib.h>
+#include <stdbool.h>
 
 typedef struct hattrie_t_ hattrie_t;
 
@@ -42,6 +43,16 @@ value_t* hattrie_get (hattrie_t*, const char* key, size_t len);
 /** Find a given key in the table, returning a NULL pointer if it does not
  * exist. */
 value_t* hattrie_tryget (hattrie_t*, const char* key, size_t len);
+
+
+typedef struct hattrie_iter_t_ hattrie_iter_t;
+
+hattrie_iter_t* hattrie_iter_begin     (const hattrie_t*);
+void            hattrie_iter_next      (hattrie_iter_t*);
+bool            hattrie_iter_finished  (hattrie_iter_t*);
+void            hattrie_iter_free      (hattrie_iter_t*);
+const char*     hattrie_iter_key       (hattrie_iter_t*, size_t* len);
+value_t*        hattrie_iter_val       (hattrie_iter_t*);
 
 
 #endif

@@ -8,3 +8,4 @@ libhat_trie_la_SOURCES = common.h \
                          superfasthash.h  superfasthash.c
 
 pkginclude_HEADERS = hat-trie.h ahtable.h common.h
+

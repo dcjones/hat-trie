@@ -2,8 +2,21 @@
 AC_INIT([hat-trie], [0.1.0], [dcjones@cs.washington.edu])
 AM_INIT_AUTOMAKE([foreign])
 AC_CONFIG_HEADERS([config.h])
+m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
 
-CFLAGS="-Wall -Wextra -std=c99 -pedantic -g -O0"
+base_CFLAGS="-std=c99 -Wall -Wextra -pedantic"
+opt_CFLAGS="${base_CFLAGS} -O3"
+dbg_CFLAGS="${base_CFLAGS} -g -O0"
+
+AC_ARG_ENABLE([debugging],
+              [AS_HELP_STRING([--enable-debugging],
+	                      [enable debugging info (default is no)])],
+              [], [enable_debugging=no])
+
+AS_IF([test "x$enable_debugging" = xyes],
+      [CFLAGS="$dbg_CFLAGS"],
+      [CFLAGS="$opt_CFLAGS"])
+
 
 AC_PROG_CC
 AC_PROG_CPP

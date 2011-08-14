@@ -1,5 +1,5 @@
 /*
- * This file is part of libhattrie
+ * This file is part of hat-trie.
  *
  * Copyright (c) 2011 by Daniel C. Jones <dcjones@cs.washington.edu>
  *

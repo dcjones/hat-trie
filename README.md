@@ -5,9 +5,9 @@ Hat-Trie
 This a ANSI C99 implementation of the HAT-trie data structure of Askitis and
 Sinha, an extremely efficient (space and time) modern variant of tries.
 
-The version implemented here maps null-terminated strings to words (i.e.,
-unsigned longs), which can be used to store counts, pointers, etc, or not used
-at all if you simply want to maintain a set of unique strings.
+The version implemented here maps arrays of bytes to words (i.e., unsigned
+longs), which can be used to store counts, pointers, etc, or not used at all if
+you simply want to maintain a set of unique strings.
 
 For details see,
 
