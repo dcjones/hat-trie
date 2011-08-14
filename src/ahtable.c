@@ -14,7 +14,7 @@
 
 
 static const size_t   INITIAL_SIZE     = 8;
-static const double   MAX_LOAD_FACTOR  = 10.0;
+static const double   MAX_LOAD_FACTOR  = 5.0;
 static const uint16_t LONG_KEYLEN_MASK = 0x7fff;
 
 

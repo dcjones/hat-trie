@@ -124,7 +124,7 @@ void test_hattrie_iteration()
 
     if (count != M->m) {
         fprintf(stderr, "[error] iterated through %zu element, expected %zu\n",
-                count, k);
+                count, M->m);
     }
 
     hattrie_iter_free(i);

@@ -13,7 +13,7 @@
 #include <string.h>
 
 /* maximum number of keys that may be stored in a bucket */
-static const size_t MAX_BUCKET_SIZE = 8192;
+static const size_t MAX_BUCKET_SIZE = 512;
 
 static const uint8_t NODE_TYPE_TRIE          = 0x1;
 static const uint8_t NODE_TYPE_PURE_BUCKET   = 0x2;
@@ -433,6 +433,9 @@ static void hattrie_iter_nextnode(hattrie_iter_t* i)
     else {
         if (*node.flag & NODE_TYPE_PURE_BUCKET) {
             hattrie_iter_pushchar(i, level, c);
+        }
+        else {
+            i->level = level - 1;
         }
 
         i->i = ahtable_iter_begin(node.b);

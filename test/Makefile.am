@@ -1,5 +1,5 @@
 
-TESTS = check_ahtable
+TESTS = check_ahtable check_hattrie
 check_PROGRAMS = check_ahtable check_hattrie
 
 check_ahtable_SOURCES  = check_ahtable.c str_map.c
