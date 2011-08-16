@@ -41,7 +41,8 @@ typedef struct ahtable_t_
     size_t m;        // numbur of key/value pairs stored
     size_t max_m;    // number of stored keys before we resize
 
-    slot_t* slots;
+    size_t*  slot_sizes;
+    slot_t*  slots;
 } ahtable_t;
 
 extern const double ahtable_max_load_factor;
@@ -52,7 +53,6 @@ ahtable_t* ahtable_create_n (size_t n);     // Create an empty hash table, with
                                             //  n slots reserved.
 
 void       ahtable_free   (ahtable_t*);       // Free all memory used by a table.
-ahtable_t* ahtable_dup    (const ahtable_t*); // Duplicate an existing table.
 void       ahtable_clear  (ahtable_t*);       // Remove all entries.
 size_t     ahtable_size   (const ahtable_t*); // Number of stored keys.
 
@@ -70,6 +70,9 @@ value_t* ahtable_get (ahtable_t*, const char* key, size_t len);
 /** Find a given key in the table, returning a NULL pointer if it does not
  * exist. */
 value_t* ahtable_tryget (ahtable_t*, const char* key, size_t len);
+
+
+void ahtable_del(ahtable_t*, const char* key, size_t len);
 
 
 typedef struct ahtable_iter_t_ ahtable_iter_t;

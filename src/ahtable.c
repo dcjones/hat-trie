@@ -35,6 +35,10 @@ ahtable_t* ahtable_create_n(size_t n)
     T->max_m = (size_t) (ahtable_max_load_factor * (double) T->n);
     T->slots = malloc_or_die(n * sizeof(slot_t));
     memset(T->slots, 0, n * sizeof(slot_t));
+
+    T->slot_sizes = malloc_or_die(n * sizeof(size_t));
+    memset(T->slot_sizes, 0, n * sizeof(size_t));
+
     return T;
 }
 
@@ -44,19 +48,8 @@ void ahtable_free(ahtable_t* T)
     size_t i;
     for (i = 0; i < T->n; ++i) free(T->slots[i]);
     free(T->slots);
+    free(T->slot_sizes);
     free(T);
-}
-
-
-ahtable_t* ahtable_dup(const ahtable_t* T)
-{
-    ahtable_t* S = ahtable_create_n(T->n);
-    memcpy(S->slots, T->slots, T->n * sizeof(slot_t));
-    S->flag   = T->flag;
-    S->c0     = T->c0;
-    S->c1     = T->c1;
-    S->m      = T->m;
-    return S;
 }
 
 
@@ -73,6 +66,9 @@ void ahtable_clear(ahtable_t* T)
     T->n = ahtable_initial_size;
     T->slots = realloc_or_die(T->slots, T->n * sizeof(slot_t));
     memset(T->slots, 0, T->n * sizeof(slot_t));
+
+    T->slot_sizes = realloc_or_die(T->slot_sizes, T->n * sizeof(size_t));
+    memset(T->slot_sizes, 0, T->n * sizeof(size_t));
 }
 
 
@@ -115,14 +111,17 @@ static void ahtable_expand(ahtable_t* T)
 
     const char* key;
     size_t len;
+    size_t m = 0;
     ahtable_iter_t* i = ahtable_iter_begin(T);
     while (!ahtable_iter_finished(i)) {
         key = ahtable_iter_key(i, &len);
         slot_sizes[hash(key, len) % new_n] +=
             len + sizeof(value_t) + (len >= 128 ? 2 : 1);
 
+        ++m;
         ahtable_iter_next(i);
     }
+    assert(m == T->m);
     ahtable_iter_free(i);
 
 
@@ -131,8 +130,7 @@ static void ahtable_expand(ahtable_t* T)
     size_t j;
     for (j = 0; j < new_n; ++j) {
         if (slot_sizes[j] > 0) {
-            slots[j] = malloc_or_die(slot_sizes[j] + 1);
-            slots[j][slot_sizes[j]] = '\0';
+            slots[j] = malloc_or_die(slot_sizes[j]);
         }
         else slots[j] = NULL;
     }
@@ -144,7 +142,7 @@ static void ahtable_expand(ahtable_t* T)
     slot_t* slots_next = malloc_or_die(new_n * sizeof(slot_t));
     memcpy(slots_next, slots, new_n * sizeof(slot_t));
     size_t h;
-    size_t m = 0;
+    m = 0;
     value_t* u;
     value_t* v;
     i = ahtable_iter_begin(T);
@@ -160,17 +158,21 @@ static void ahtable_expand(ahtable_t* T)
         ++m;
         ahtable_iter_next(i);
     }
+    assert(m == T->m);
     ahtable_iter_free(i);
 
-    assert(m == T->m);
 
     free(slots_next);
     for (j = 0; j < T->n; ++j) free(T->slots[j]);
+
     free(T->slots);
     T->slots = slots;
+
+    free(T->slot_sizes);
+    T->slot_sizes = slot_sizes;
+
     T->n = new_n;
     T->max_m = (size_t) (ahtable_max_load_factor * (double) T->n);
-    free(slot_sizes);
 }
 
 
@@ -187,29 +189,10 @@ static value_t* get_key(ahtable_t* T, const char* key, size_t len, bool insert_m
     slot_t s;
     value_t* val;
 
-
-    /* the easy case: empty slot */
-    if (T->slots[i] == NULL) {
-        if (insert_missing) {
-            size_t slot_size = 0;
-            slot_size += 1 + (len >= 128 ? 1 : 0);     // key length
-            slot_size += len * sizeof(unsigned char); // key
-            slot_size += sizeof(value_t);             // value
-            slot_size += 1;                           // null-terminator
-            s = T->slots[i] = malloc_or_die(slot_size);
-
-            ++T->m;
-            s = ins_key(s, key, len, &val);
-            *s = '\0';
-
-            return val;
-        }
-        else return NULL;
-    }
-
     /* search the array for our key */
     s = T->slots[i];
-    while (*s != '\0') {
+    while ((size_t) (s - T->slots[i]) < T->slot_sizes[i]) {
+
         /* get the key length */
         if (0x80 & *s) {
             k = (size_t) (LONG_KEYLEN_MASK & *((uint16_t*) s));
@@ -240,17 +223,15 @@ static value_t* get_key(ahtable_t* T, const char* key, size_t len, bool insert_m
 
     if (insert_missing) {
         /* the key was not found, so we must insert it. */
-        size_t old_size = s - T->slots[i] + 1;
-        size_t new_size = old_size;
-        new_size += 1 + (len >= 128 ? 1 : 0);     // key length
+        size_t new_size = T->slot_sizes[i];
+        new_size += 1 + (len >= 128 ? 1 : 0);    // key length
         new_size += len * sizeof(unsigned char); // key
         new_size += sizeof(value_t);             // value
 
-        s = T->slots[i] = realloc_or_die(T->slots[i], new_size);
-        s[new_size - 1] = '\0';
-
+        T->slots[i] = realloc_or_die(T->slots[i], new_size);
         ++T->m;
-        ins_key(s + old_size - 1, key, len, &val);
+        ins_key(T->slots[i] + T->slot_sizes[i], key, len, &val);
+        T->slot_sizes[i] = new_size;
 
         return val;
     }
@@ -258,15 +239,62 @@ static value_t* get_key(ahtable_t* T, const char* key, size_t len, bool insert_m
 }
 
 
-value_t* ahtable_get (ahtable_t* T, const char* key, size_t len)
+value_t* ahtable_get(ahtable_t* T, const char* key, size_t len)
 {
     return get_key(T, key, len, true);
 }
 
 
-value_t* ahtable_tryget (ahtable_t* T, const char* key, size_t len )
+value_t* ahtable_tryget(ahtable_t* T, const char* key, size_t len )
 {
     return get_key(T, key, len, false);
+}
+
+
+void ahtable_del(ahtable_t* T, const char* key, size_t len)
+{
+    uint32_t i = hash(key, len) % T->n;
+    size_t k;
+    slot_t s;
+
+    /* search the array for our key */
+    s = T->slots[i];
+    while ((size_t) (s - T->slots[i]) < T->slot_sizes[i]) {
+
+        /* get the key length */
+        if (0x80 & *s) {
+            k = (size_t) (LONG_KEYLEN_MASK & *((uint16_t*) s));
+            s += 2;
+        }
+        else {
+            k = (size_t) *s;
+            s += 1;
+        }
+
+        /* skip keys that are longer than ours */
+        if (k != len) {
+            s += k + sizeof(value_t);
+            continue;
+        }
+
+        /* key found. */
+        if (memcmp(s, key, len) == 0) {
+            /* move everything over, resize the array */
+            unsigned char* t = s + len + sizeof(value_t);
+            s -= k > 255 ? 2 : 1;
+            memmove(s, t, T->slot_sizes[i] - (size_t) (t - T->slots[i]));
+            T->slot_sizes[i] -= (size_t) (t - s);
+            --T->m;
+            return;
+        }
+        /* key not found. */
+        else {
+            s += k + sizeof(value_t);
+            continue;
+        }
+    }
+
+    // Key was not found. Do nothing.
 }
 
 
@@ -287,8 +315,7 @@ ahtable_iter_t* ahtable_iter_begin(const ahtable_t* T)
 
     for (i->i = 0; i->i < i->T->n; ++i->i) {
         i->s = T->slots[i->i];
-        if (i->s == NULL) continue;
-        if (*i->s == '\0') continue;
+        if ((size_t) (i->s - T->slots[i->i]) >= T->slot_sizes[i->i]) continue;
         break;
     }
 
@@ -315,13 +342,14 @@ void ahtable_iter_next(ahtable_iter_t* i)
     /* skip to the next key */
     i->s += k + sizeof(value_t);
 
-    if (*i->s == '\0') {
+    if ((size_t) (i->s - i->T->slots[i->i]) >= i->T->slot_sizes[i->i]) {
         do {
             ++i->i;
         } while(i->i < i->T->n &&
-                (i->T->slots[i->i] == NULL || *i->T->slots[i->i] == '\0'));
+                i->T->slot_sizes[i->i] == 0);
 
         if (i->i < i->T->n) i->s = i->T->slots[i->i];
+        else i->s = NULL;
     }
 }
 

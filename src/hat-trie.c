@@ -124,9 +124,6 @@ static void hattrie_split(node_ptr parent, node_ptr node)
     if (*node.flag & NODE_TYPE_PURE_BUCKET) {
         /* turn the pure bucket into a hybrid bucket */
         parent.t->xs[node.b->c0].t = alloc_trie_node(node);
-        node.b->c0   = 0x00;
-        node.b->c1   = 0xff;
-        node.b->flag = NODE_TYPE_HYBRID_BUCKET;
 
         /* if the bucket had an empty key, move it to the new trie node */
         value_t* val = ahtable_tryget(node.b, NULL, 0);
@@ -134,14 +131,17 @@ static void hattrie_split(node_ptr parent, node_ptr node)
             parent.t->xs[node.b->c0].t->val     = *val;
             parent.t->xs[node.b->c0].t->has_val = true;
             *val = 0;
+            ahtable_del(node.b, NULL, 0);
         }
 
+        node.b->c0   = 0x00;
+        node.b->c1   = 0xff;
+        node.b->flag = NODE_TYPE_HYBRID_BUCKET;
 
         return;
     }
 
     /* This is a hybrid bucket. Perform a proper split. */
-
 
     /* count the number of occourances of every leading character */
     unsigned int cs[256]; // occurance count for leading chars
@@ -157,7 +157,6 @@ static void hattrie_split(node_ptr parent, node_ptr node)
         ahtable_iter_next(i);
     }
     ahtable_iter_free(i);
-
 
     /* choose a split point */
     unsigned int left_m, right_m, all_m;
@@ -176,7 +175,6 @@ static void hattrie_split(node_ptr parent, node_ptr node)
         }
         else break;
     }
-
 
     /* now split into two node cooresponding to ranges [0, j] and
      * [j + 1, 255], respectively. */
@@ -268,21 +266,32 @@ value_t* hattrie_get(hattrie_t* T, const char* key, size_t len)
     if (len == 0) return &parent.t->val;
     node_ptr node = parent.t->xs[(size_t) *key];
 
-    while (*node.flag & NODE_TYPE_TRIE && len > 1) {
+    while (*node.flag & NODE_TYPE_TRIE && len > 0) {
         ++key;
         --len;
         parent = node;
         node   = node.t->xs[(size_t) *key];
     }
 
+    assert(*parent.flag & NODE_TYPE_TRIE);
+
 
     /* if the key has been consumed on a trie node, use its value */
-    if (*node.flag & NODE_TYPE_TRIE) {
-        if (!node.t->has_val) {
-            node.t->has_val = true;
-            ++T->m;
+    if (len == 0) {
+        if (*node.flag & NODE_TYPE_TRIE) {
+            if (!node.t->has_val) {
+                node.t->has_val = true;
+                ++T->m;
+            }
+            return &node.t->val;
         }
-        return &node.t->val;
+        else if (*node.flag & NODE_TYPE_HYBRID_BUCKET) {
+            if (!parent.t->has_val) {
+                parent.t->has_val = true;
+                ++T->m;
+            }
+            return &parent.t->val;
+        }
     }
 
 
@@ -293,24 +302,37 @@ value_t* hattrie_get(hattrie_t* T, const char* key, size_t len)
         /* after the split, the node pointer is invalidated, so we search from
          * the parent again. */
         node = parent.t->xs[(size_t) *key];
-        while (*node.flag & NODE_TYPE_TRIE && len > 1) {
+        while (*node.flag & NODE_TYPE_TRIE && len > 0) {
             ++key;
             --len;
             parent = node;
             node   = node.t->xs[(size_t) *key];
         }
 
-        if (*node.flag & NODE_TYPE_TRIE) {
-            assert(len == 1);
+        assert(*parent.flag & NODE_TYPE_TRIE);
 
-            if (!node.t->has_val) {
-                node.t->has_val = true;
-                ++T->m;
+        /* if the key has been consumed on a trie node, use its value */
+        if (len == 0) {
+            if (*node.flag & NODE_TYPE_TRIE) {
+                if (!node.t->has_val) {
+                    node.t->has_val = true;
+                    ++T->m;
+                }
+                return &node.t->val;
             }
-            return &node.t->val;
+            else if (*node.flag & NODE_TYPE_HYBRID_BUCKET) {
+                if (!parent.t->has_val) {
+                    parent.t->has_val = true;
+                    ++T->m;
+                }
+                return &parent.t->val;
+            }
         }
     }
 
+    assert(*node.flag & NODE_TYPE_PURE_BUCKET || *node.flag & NODE_TYPE_HYBRID_BUCKET);
+
+    assert(len > 0);
     size_t m_old = node.b->m;
     value_t* val;
     if (*node.flag & NODE_TYPE_PURE_BUCKET) {
