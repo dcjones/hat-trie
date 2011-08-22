@@ -17,7 +17,8 @@ void randstr(char* x, size_t len)
 
 
 const size_t n = 2000000;  // how many uniques strings
-const size_t m = 50;       // length of each string
+const size_t m_low  = 50;  // minimum length of each string
+const size_t m_high = 500; // maximum length of each string
 const size_t k = 2000000;  // number of insertions
 char** xs;
 
@@ -30,7 +31,9 @@ void setup()
     fprintf(stderr, "generating %zu keys ... ", n);
     xs = malloc(n * sizeof(char*));
     size_t i;
+    size_t m;
     for (i = 0; i < n; ++i) {
+        m = m_low + rand() % (m_high - m_low);
         xs[i] = malloc(m + 1);
         randstr(xs[i], m);
     }

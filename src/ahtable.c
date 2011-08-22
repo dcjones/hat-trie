@@ -76,13 +76,13 @@ static slot_t ins_key(slot_t s, const char* key, size_t len, value_t** val)
 {
     // key length
     if (len < 128) {
-        s[0] = (unsigned char) len;
+        s[0] = (unsigned char) (len << 1);
         s += 1;
     }
     else {
         /* The most significant bit is set to indicate that two bytes are
          * being used to store the key length. */
-        *((uint16_t*) s) = (uint16_t) len | 0x8000;
+        *((uint16_t*) s) = ((uint16_t) len << 1) | 0x1;
         s += 2;
     }
 
@@ -194,12 +194,12 @@ static value_t* get_key(ahtable_t* T, const char* key, size_t len, bool insert_m
     while ((size_t) (s - T->slots[i]) < T->slot_sizes[i]) {
 
         /* get the key length */
-        if (0x80 & *s) {
-            k = (size_t) (LONG_KEYLEN_MASK & *((uint16_t*) s));
+        if (0x1 & *s) {
+            k = (size_t) (*((uint16_t*) s) >> 1);
             s += 2;
         }
         else {
-            k = (size_t) *s;
+            k = (size_t) (*s >> 1);
             s += 1;
         }
 
@@ -262,12 +262,12 @@ void ahtable_del(ahtable_t* T, const char* key, size_t len)
     while ((size_t) (s - T->slots[i]) < T->slot_sizes[i]) {
 
         /* get the key length */
-        if (0x80 & *s) {
-            k = (size_t) (LONG_KEYLEN_MASK & *((uint16_t*) s));
+        if (0x1 & *s) {
+            k = (size_t) (*((uint16_t*) s)) >> 1;
             s += 2;
         }
         else {
-            k = (size_t) *s;
+            k = (size_t) (*s >> 1);
             s += 1;
         }
 
@@ -330,12 +330,12 @@ void ahtable_iter_next(ahtable_iter_t* i)
     size_t k;
 
     /* get the key length */
-    if (0x80 & *i->s) {
-        k = (size_t) (LONG_KEYLEN_MASK & *((uint16_t*) i->s));
+    if (0x1 & *i->s) {
+        k = (size_t) ((*((uint16_t*) i->s)) >> 1);
         i->s += 2;
     }
     else {
-        k = (size_t) *i->s;
+        k = (size_t) (*i->s >> 1);
         i->s += 1;
     }
 
@@ -374,12 +374,12 @@ const char* ahtable_iter_key(ahtable_iter_t* i, size_t* len)
 
     slot_t s = i->s;
     size_t k;
-    if (0x80 & *s) {
-        k = (size_t) (LONG_KEYLEN_MASK & *((uint16_t*) s));
+    if (0x1 & *s) {
+        k = (size_t) (*((uint16_t*) s)) >> 1;
         s += 2;
     }
     else {
-        k = (size_t) *s;
+        k = (size_t) (*s >> 1);
         s += 1;
     }
 
@@ -395,12 +395,12 @@ value_t* ahtable_iter_val(ahtable_iter_t* i)
     slot_t s = i->s;
 
     size_t k;
-    if (0x80 & *s) {
-        k = (size_t) (LONG_KEYLEN_MASK & *((uint16_t*) s));
+    if (0x1 & *s) {
+        k = (size_t) (*((uint16_t*) s)) >> 1;
         s += 2;
     }
     else {
-        k = (size_t) *s;
+        k = (size_t) (*s >> 1);
         s += 1;
     }
 
