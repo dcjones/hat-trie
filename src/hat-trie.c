@@ -507,7 +507,7 @@ hattrie_iter_t* hattrie_iter_begin(const hattrie_t* T)
         hattrie_iter_nextnode(i);
     }
 
-    if (ahtable_iter_finished(i->i)) {
+    if (i->i != NULL && ahtable_iter_finished(i->i)) {
         ahtable_iter_free(i->i);
         i->i = NULL;
     }
@@ -538,7 +538,7 @@ void hattrie_iter_next(hattrie_iter_t* i)
         hattrie_iter_nextnode(i);
     }
 
-    if (ahtable_iter_finished(i->i)) {
+    if (i->i != NULL && ahtable_iter_finished(i->i)) {
         ahtable_iter_free(i->i);
         i->i = NULL;
     }
