@@ -46,7 +46,7 @@
 
 uint32_t hash(const char * data, int len)
 {
-    return hash_inc(data, len, len);
+    return hash_inc(data, len, (uint32_t) len);
 }
 
 uint32_t hash_inc(const char * data, int len, uint32_t hash)

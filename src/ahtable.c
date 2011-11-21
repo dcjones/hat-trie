@@ -13,8 +13,9 @@
 #include <string.h>
 
 
-const double ahtable_max_load_factor = 5.0;
-const const size_t ahtable_initial_size = 8;
+
+const double ahtable_max_load_factor = 100000.0; /* arbitrary large number => don't resize */
+const const size_t ahtable_initial_size = 4096;
 static const uint16_t LONG_KEYLEN_MASK = 0x7fff;
 
 
@@ -229,6 +230,7 @@ static value_t* get_key(ahtable_t* T, const char* key, size_t len, bool insert_m
         new_size += sizeof(value_t);             // value
 
         T->slots[i] = realloc_or_die(T->slots[i], new_size);
+
         ++T->m;
         ins_key(T->slots[i] + T->slot_sizes[i], key, len, &val);
         T->slot_sizes[i] = new_size;

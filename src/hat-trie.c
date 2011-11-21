@@ -12,8 +12,8 @@
 #include <stdint.h>
 #include <string.h>
 
-/* maximum number of keys that may be stored in a bucket */
-static const size_t MAX_BUCKET_SIZE = 512;
+/* maximum number of keys that may be stored in a bucket before it is burst */
+static const size_t MAX_BUCKET_SIZE = 16384;
 
 static const uint8_t NODE_TYPE_TRIE          = 0x1;
 static const uint8_t NODE_TYPE_PURE_BUCKET   = 0x2;

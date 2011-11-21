@@ -16,10 +16,10 @@ void randstr(char* x, size_t len)
 }
 
 
-const size_t n = 1000000;  // how many uniques strings
+const size_t n = 100000;  // how many uniques strings
 const size_t m_low  = 50;  // minimum length of each string
 const size_t m_high = 500; // maximum length of each string
-const size_t k = 2000000;  // number of insertions
+const size_t k = 200000;  // number of insertions
 char** xs;
 
 hattrie_t* T;
