@@ -20,4 +20,15 @@ For details see,
      91–102). Springer.
 
 
+Installation
+------------
+
+    git clone git@github.com:dcjones/hat-trie.git
+    cd hat-trie
+    autoreconf -i
+    ./configure
+    make install
+
+To use the library, include `hat-trie.h` and link using `lhat-trie`.
+
 
