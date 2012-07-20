@@ -153,14 +153,14 @@ static void hattrie_split(node_ptr parent, node_ptr node)
     while (!ahtable_iter_finished(i)) {
         key = ahtable_iter_key(i, &len);
         assert(len > 0);
-        cs[(size_t) key[0]] += 1;
+        cs[(unsigned char) key[0]] += 1;
         ahtable_iter_next(i);
     }
     ahtable_iter_free(i);
 
     /* choose a split point */
     unsigned int left_m, right_m, all_m;
-    size_t j = node.b->c0;
+    unsigned char j = node.b->c0;
     all_m   = ahtable_size(node.b);
     left_m  = cs[j];
     right_m = all_m - left_m;
@@ -195,7 +195,7 @@ static void hattrie_split(node_ptr parent, node_ptr node)
     node_ptr left, right;
     left.b  = ahtable_create_n(num_slots);
     left.b->c0   = node.b->c0;
-    left.b->c1   = (uint8_t) j;
+    left.b->c1   = j;
     left.b->flag = left.b->c0 == left.b->c1 ?
                       NODE_TYPE_PURE_BUCKET : NODE_TYPE_HYBRID_BUCKET;
 
@@ -205,7 +205,7 @@ static void hattrie_split(node_ptr parent, node_ptr node)
             num_slots *= 2);
 
     right.b = ahtable_create_n(num_slots);
-    right.b->c0   = (uint8_t) j + 1;
+    right.b->c0   = j + 1;
     right.b->c1   = node.b->c1;
     right.b->flag = right.b->c0 == right.b->c1 ?
                       NODE_TYPE_PURE_BUCKET : NODE_TYPE_HYBRID_BUCKET;
@@ -213,9 +213,9 @@ static void hattrie_split(node_ptr parent, node_ptr node)
 
     /* update the parent's pointer */
 
-    size_t c;
-    for (c = (size_t) node.b->c0; c <= j; ++c) parent.t->xs[c] = left;
-    for (; c <= (size_t) node.b->c1; ++c)      parent.t->xs[c] = right;
+    unsigned int c;
+    for (c = node.b->c0; c <= j; ++c) parent.t->xs[c] = left;
+    for (; c <= node.b->c1; ++c)      parent.t->xs[c] = right;
 
 
 
@@ -229,7 +229,7 @@ static void hattrie_split(node_ptr parent, node_ptr node)
         assert(len > 0);
 
         /* left */
-        if ((size_t) key[0] <= j) {
+        if ((unsigned char) key[0] <= j) {
             if (*left.flag & NODE_TYPE_PURE_BUCKET) {
                 v = ahtable_get(left.b, key + 1, len - 1);
             }
@@ -264,13 +264,14 @@ value_t* hattrie_get(hattrie_t* T, const char* key, size_t len)
     assert(*parent.flag & NODE_TYPE_TRIE);
 
     if (len == 0) return &parent.t->val;
-    node_ptr node = parent.t->xs[(size_t) *key];
+
+    node_ptr node = parent.t->xs[(unsigned char) *key];
 
     while (*node.flag & NODE_TYPE_TRIE && len > 0) {
         ++key;
         --len;
         parent = node;
-        node   = node.t->xs[(size_t) *key];
+        node   = node.t->xs[(unsigned char) *key];
     }
 
     assert(*parent.flag & NODE_TYPE_TRIE);
@@ -301,12 +302,12 @@ value_t* hattrie_get(hattrie_t* T, const char* key, size_t len)
 
         /* after the split, the node pointer is invalidated, so we search from
          * the parent again. */
-        node = parent.t->xs[(size_t) *key];
+        node = parent.t->xs[(unsigned char) *key];
         while (*node.flag & NODE_TYPE_TRIE && len > 0) {
             ++key;
             --len;
             parent = node;
-            node   = node.t->xs[(size_t) *key];
+            node   = node.t->xs[(unsigned char) *key];
         }
 
         assert(*parent.flag & NODE_TYPE_TRIE);
@@ -353,13 +354,13 @@ value_t* hattrie_tryget(hattrie_t* T, const char* key, size_t len)
     assert(*parent.flag & NODE_TYPE_TRIE);
 
     if (len == 0) return &parent.t->val;
-    node_ptr node = parent.t->xs[(size_t) *key];
+    node_ptr node = parent.t->xs[(unsigned char) *key];
 
     while (*node.flag & NODE_TYPE_TRIE && len > 1) {
         ++key;
         --len;
         parent = node;
-        node   = node.t->xs[(size_t) *key];
+        node   = node.t->xs[(unsigned char) *key];
     }
 
 
@@ -388,7 +389,7 @@ value_t* hattrie_tryget(hattrie_t* T, const char* key, size_t len)
 
 typedef struct hattrie_node_stack_t_
 {
-    char   c;
+    unsigned char   c;
     size_t level;
 
     node_ptr node;
@@ -435,7 +436,7 @@ static void hattrie_iter_nextnode(hattrie_iter_t* i)
     /* pop the stack */
     node_ptr node;
     hattrie_node_stack_t* next;
-    char   c;
+    unsigned char   c;
     size_t level;
 
     node  = i->stack->node;
@@ -465,7 +466,7 @@ static void hattrie_iter_nextnode(hattrie_iter_t* i)
             i->stack->node  = node.t->xs[j];
             i->stack->next  = next;
             i->stack->level = level + 1;
-            i->stack->c     = (char) j;
+            i->stack->c     = (unsigned char) j;
         }
     }
     else {
