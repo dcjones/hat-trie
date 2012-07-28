@@ -135,11 +135,33 @@ void test_hattrie_iteration()
     fprintf(stderr, "done.\n");
 }
 
+void test_trie_non_ascii()
+{
+    fprintf(stderr, "checking non-ascii... \n");
+
+    value_t* u;
+    hattrie_t* T = hattrie_create();
+    char* txt = "\x81\x70";
+
+    u = hattrie_get(T, txt, strlen(txt));
+    *u = 10;
+
+    u = hattrie_tryget(T, txt, strlen(txt));
+    if (*u != 10){
+        fprintf(stderr, "can't store non-ascii strings\n");
+    }
+    hattrie_free(T);
+
+    fprintf(stderr, "done.\n");
+}
+
 
 
 
 int main()
 {
+    test_trie_non_ascii();
+
     setup();
     test_hattrie_insert();
     test_hattrie_iteration();
