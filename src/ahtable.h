@@ -77,12 +77,13 @@ void ahtable_del(ahtable_t*, const char* key, size_t len);
 
 typedef struct ahtable_iter_t_ ahtable_iter_t;
 
-ahtable_iter_t* ahtable_iter_begin     (const ahtable_t*);
+ahtable_iter_t* ahtable_iter_begin     (const ahtable_t*, bool sorted);
 void            ahtable_iter_next      (ahtable_iter_t*);
 bool            ahtable_iter_finished  (ahtable_iter_t*);
 void            ahtable_iter_free      (ahtable_iter_t*);
 const char*     ahtable_iter_key       (ahtable_iter_t*, size_t* len);
 value_t*        ahtable_iter_val       (ahtable_iter_t*);
+
 
 #ifdef __cplusplus
 }

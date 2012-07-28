@@ -16,10 +16,10 @@ void randstr(char* x, size_t len)
 }
 
 
-const size_t n = 2000000;  // how many uniques strings
+const size_t n = 100000;  // how many unique strings
 const size_t m_low  = 50;  // minimum length of each string
 const size_t m_high = 500; // maximum length of each string
-const size_t k = 2000000;  // number of insertions
+const size_t k = 200000;  // number of insertions
 char** xs;
 
 ahtable_t* T;
@@ -87,12 +87,11 @@ void test_ahtable_insert()
 }
 
 
-
 void test_ahtable_iteration()
 {
     fprintf(stderr, "iterating through %zu keys ... \n", k);
 
-    ahtable_iter_t* i = ahtable_iter_begin(T);
+    ahtable_iter_t* i = ahtable_iter_begin(T, false);
 
     size_t count = 0;
     value_t* u;
@@ -106,8 +105,7 @@ void test_ahtable_iteration()
 
         key = ahtable_iter_key(i, &len);
         u   = ahtable_iter_val(i);
-
-        v = str_map_get(M, key, len);
+        v   = str_map_get(M, key, len);
 
         if (*u != v) {
             if (v == 0) {
@@ -136,19 +134,76 @@ void test_ahtable_iteration()
 }
 
 
+int cmpkey(const char* a, size_t ka, const char* b, size_t kb)
+{
+    int c = memcmp(a, b, ka < kb ? ka : kb);
+    return c == 0 ? (int) ka - (int) kb : c;
+}
+
+
+void test_ahtable_sorted_iteration()
+{
+    fprintf(stderr, "iterating in order through %zu keys ... \n", k);
+
+    ahtable_iter_t* i = ahtable_iter_begin(T, true);
+
+    size_t count = 0;
+    value_t* u;
+    value_t  v;
+
+    char* prev_key = malloc(m_high + 1);
+    size_t prev_len;
+
+    const char *key = NULL;
+    size_t len = 0;
+
+    while (!ahtable_iter_finished(i)) {
+        memcpy(prev_key, key, len);
+        prev_len = len;
+        ++count;
+
+        key = ahtable_iter_key(i, &len);
+        if (prev_key != NULL && cmpkey(prev_key, prev_len, key, len) > 0) {
+            fprintf(stderr, "[error] iteration is not correctly ordered.\n");
+        }
+
+        u  = ahtable_iter_val(i);
+        v  = str_map_get(M, key, len);
+
+        if (*u != v) {
+            if (v == 0) {
+                fprintf(stderr, "[error] incorrect iteration (%lu, %lu)\n", *u, v);
+            }
+            else {
+                fprintf(stderr, "[error] incorrect iteration tally (%lu, %lu)\n", *u, v);
+            }
+        }
+
+        // this way we will see an error if the same key is iterated through
+        // twice
+        str_map_set(M, key, len, 0);
+
+        ahtable_iter_next(i);
+    }
+
+    ahtable_iter_free(i);
+    free(prev_key);
+
+    fprintf(stderr, "done.\n");
+}
 
 
 int main()
 {
     setup();
     test_ahtable_insert();
-    test_ahtable_iteration();
+    test_ahtable_iteration(false);
+    teardown();
+
+    setup();
+    test_ahtable_insert();
+    test_ahtable_sorted_iteration();
     teardown();
 
     return 0;
 }
-
-
-
-
-

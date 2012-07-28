@@ -149,7 +149,7 @@ static void hattrie_split(node_ptr parent, node_ptr node)
     size_t len;
     const char* key;
 
-    ahtable_iter_t* i = ahtable_iter_begin(node.b);
+    ahtable_iter_t* i = ahtable_iter_begin(node.b, false);
     while (!ahtable_iter_finished(i)) {
         key = ahtable_iter_key(i, &len);
         assert(len > 0);
@@ -222,7 +222,7 @@ static void hattrie_split(node_ptr parent, node_ptr node)
     /* distribute keys to the new left or right node */
     value_t* u;
     value_t* v;
-    i = ahtable_iter_begin(node.b);
+    i = ahtable_iter_begin(node.b, false);
     while (!ahtable_iter_finished(i)) {
         key = ahtable_iter_key(i, &len);
         u   = ahtable_iter_val(i);
@@ -409,6 +409,7 @@ struct hattrie_iter_t_
     value_t nil_val;
 
     const hattrie_t* T;
+    bool sorted;
     ahtable_iter_t* i;
     hattrie_node_stack_t* stack;
 };
@@ -477,15 +478,16 @@ static void hattrie_iter_nextnode(hattrie_iter_t* i)
             i->level = level - 1;
         }
 
-        i->i = ahtable_iter_begin(node.b);
+        i->i = ahtable_iter_begin(node.b, i->sorted);
     }
 }
 
 
-hattrie_iter_t* hattrie_iter_begin(const hattrie_t* T)
+hattrie_iter_t* hattrie_iter_begin(const hattrie_t* T, bool sorted)
 {
     hattrie_iter_t* i = malloc_or_die(sizeof(hattrie_iter_t));
     i->T = T;
+    i->sorted = sorted;
     i->i = NULL;
     i->keysize = 16;
     i->key = malloc_or_die(i->keysize * sizeof(char));
@@ -517,7 +519,6 @@ hattrie_iter_t* hattrie_iter_begin(const hattrie_t* T)
 }
 
 
-
 void hattrie_iter_next(hattrie_iter_t* i)
 {
     if (hattrie_iter_finished(i)) return;
@@ -544,7 +545,6 @@ void hattrie_iter_next(hattrie_iter_t* i)
         i->i = NULL;
     }
 }
-
 
 
 bool hattrie_iter_finished(hattrie_iter_t* i)
