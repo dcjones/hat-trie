@@ -8,8 +8,8 @@
 #include "hat-trie.h"
 #include "ahtable.h"
 #include "misc.h"
+#include "pstdint.h"
 #include <assert.h>
-#include <stdint.h>
 #include <string.h>
 
 /* maximum number of keys that may be stored in a bucket before it is burst */

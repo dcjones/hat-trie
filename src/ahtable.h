@@ -24,8 +24,8 @@ extern "C" {
 #endif
 
 #include <stdlib.h>
-#include <stdint.h>
 #include <stdbool.h>
+#include "pstdint.h"
 #include "common.h"
 
 typedef unsigned char* slot_t;

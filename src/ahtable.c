@@ -8,7 +8,6 @@
 #include "ahtable.h"
 #include "misc.h"
 #include "superfasthash.h"
-#include "config.h"
 #include <assert.h>
 #include <string.h>
 
