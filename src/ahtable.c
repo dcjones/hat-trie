@@ -7,7 +7,7 @@
 
 #include "ahtable.h"
 #include "misc.h"
-#include "superfasthash.h"
+#include "murmurhash3.h"
 #include <assert.h>
 #include <string.h>
 
