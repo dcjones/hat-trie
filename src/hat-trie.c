@@ -12,6 +12,8 @@
 #include <assert.h>
 #include <string.h>
 
+#define HT_UNUSED(x) x=x
+
 /* maximum number of keys that may be stored in a bucket before it is burst */
 static const size_t MAX_BUCKET_SIZE = 16384;
 #define NODE_MAXCHAR 0xff // 0x7f for 7-bit ASCII
@@ -51,11 +53,14 @@ typedef struct trie_node_t_
 
 /* Create a new trie node with all pointer pointing to the given child (which
  * can be NULL). */
-static trie_node_t* alloc_trie_node(node_ptr child)
+static trie_node_t* alloc_trie_node(hattrie_t* T, node_ptr child)
 {
     trie_node_t* node = malloc_or_die(sizeof(trie_node_t));
     node->flag = NODE_TYPE_TRIE;
     node->val  = 0;
+    
+    /* pass T to allow custom allocator for trie. */
+    HT_UNUSED(T); /* unused now */
     
     size_t i;
     for (i = 0; i < NODE_CHILDS; ++i) node->xs[i] = child;
@@ -81,7 +86,7 @@ hattrie_t* hattrie_create()
     node.b->flag = NODE_TYPE_HYBRID_BUCKET;
     node.b->c0 = 0x00;
     node.b->c1 = NODE_MAXCHAR;
-    T->root.t = alloc_trie_node(node);
+    T->root.t = alloc_trie_node(T, node);
 
     return T;
 }
@@ -114,7 +119,7 @@ void hattrie_free(hattrie_t* T)
 
 /* Perform one split operation on the given node with the given parent.
  */
-static void hattrie_split(node_ptr parent, node_ptr node)
+static void hattrie_split(hattrie_t* T, node_ptr parent, node_ptr node)
 {
     /* only buckets may be split */
     assert(*node.flag & NODE_TYPE_PURE_BUCKET ||
@@ -124,7 +129,7 @@ static void hattrie_split(node_ptr parent, node_ptr node)
 
     if (*node.flag & NODE_TYPE_PURE_BUCKET) {
         /* turn the pure bucket into a hybrid bucket */
-        parent.t->xs[node.b->c0].t = alloc_trie_node(node);
+        parent.t->xs[node.b->c0].t = alloc_trie_node(T, node);
 
         /* if the bucket had an empty key, move it to the new trie node */
         value_t* val = ahtable_tryget(node.b, NULL, 0);
@@ -299,7 +304,7 @@ value_t* hattrie_get(hattrie_t* T, const char* key, size_t len)
 
     /* preemptively split the bucket if it is full */
     while (ahtable_size(node.b) >= MAX_BUCKET_SIZE) {
-        hattrie_split(parent, node);
+        hattrie_split(T, parent, node);
 
         /* after the split, the node pointer is invalidated, so we search from
          * the parent again. */
