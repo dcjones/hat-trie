@@ -50,6 +50,11 @@ typedef struct trie_node_t_
 
 } trie_node_t;
 
+struct hattrie_t_
+{
+    node_ptr root; // root node
+    size_t m;      // number of stored keys
+};
 
 /* Create a new trie node with all pointer pointing to the given child (which
  * can be NULL). */
@@ -67,14 +72,32 @@ static trie_node_t* alloc_trie_node(hattrie_t* T, node_ptr child)
     return node;
 }
 
-
-struct hattrie_t_
+/* iterate trie nodes until string is consumed or bucket is found */
+static node_ptr hattrie_consume(node_ptr *p, const char **k, size_t *l, unsigned brk)
 {
-    node_ptr root; // root node
-    size_t m;      // number of stored keys
-};
+    node_ptr node = p->t->xs[(unsigned char) **k];
+    while (*node.flag & NODE_TYPE_TRIE && *l > brk) {
+        ++*k;
+        --*l;
+        *p   = node;
+        node = node.t->xs[(unsigned char) **k];
+    }
 
+    /* copy and writeback variables if it's faster */
 
+    assert(*p->flag & NODE_TYPE_TRIE);
+    return node;
+}
+
+/* use node value and return pointer to it */
+static inline value_t* hattrie_usenode(hattrie_t *T, node_ptr n)
+{
+    if (!(n.t->flag & NODE_HAS_VAL)) {
+        n.t->flag |= NODE_HAS_VAL;
+        ++T->m;
+    }
+    return &n.t->val;
+}
 
 hattrie_t* hattrie_create()
 {
@@ -263,41 +286,24 @@ static void hattrie_split(hattrie_t* T, node_ptr parent, node_ptr node)
     ahtable_free(node.b);
 }
 
-
 value_t* hattrie_get(hattrie_t* T, const char* key, size_t len)
 {
     node_ptr parent = T->root;
     assert(*parent.flag & NODE_TYPE_TRIE);
 
-    if (len == 0) return &parent.t->val;
+    if (len == 0) return NULL;
 
-    node_ptr node = parent.t->xs[(unsigned char) *key];
-
-    while (*node.flag & NODE_TYPE_TRIE && len > 0) {
-        ++key;
-        --len;
-        parent = node;
-        node   = node.t->xs[(unsigned char) *key];
-    }
-
+    /* consume all trie nodes, now parent must be trie and child anything */
+    node_ptr node = hattrie_consume(&parent, &key, &len, 0);
     assert(*parent.flag & NODE_TYPE_TRIE);
-
 
     /* if the key has been consumed on a trie node, use its value */
     if (len == 0) {
         if (*node.flag & NODE_TYPE_TRIE) {
-            if (!(node.t->flag & NODE_HAS_VAL)) {
-                node.t->flag |= NODE_HAS_VAL;
-                ++T->m;
-            }
-            return &node.t->val;
+            return hattrie_usenode(T, node);
         }
         else if (*node.flag & NODE_TYPE_HYBRID_BUCKET) {
-            if (!(parent.t->flag & NODE_HAS_VAL)) {
-                parent.t->flag |= NODE_HAS_VAL;
-                ++T->m;
-            }
-            return &parent.t->val;
+            return hattrie_usenode(T, parent);
         }
     }
 
@@ -308,31 +314,15 @@ value_t* hattrie_get(hattrie_t* T, const char* key, size_t len)
 
         /* after the split, the node pointer is invalidated, so we search from
          * the parent again. */
-        node = parent.t->xs[(unsigned char) *key];
-        while (*node.flag & NODE_TYPE_TRIE && len > 0) {
-            ++key;
-            --len;
-            parent = node;
-            node   = node.t->xs[(unsigned char) *key];
-        }
-
-        assert(*parent.flag & NODE_TYPE_TRIE);
+        node = hattrie_consume(&parent, &key, &len, 0);
 
         /* if the key has been consumed on a trie node, use its value */
         if (len == 0) {
             if (*node.flag & NODE_TYPE_TRIE) {
-                if (!(node.t->flag & NODE_HAS_VAL)) {
-                    node.t->flag |= NODE_HAS_VAL;
-                    ++T->m;
-                }
-                return &node.t->val;
+                return hattrie_usenode(T, node);
             }
             else if (*node.flag & NODE_TYPE_HYBRID_BUCKET) {
-                if (!(parent.t->flag & NODE_HAS_VAL)) {
-                    parent.t->flag |= NODE_HAS_VAL;
-                    ++T->m;
-                }
-                return &parent.t->val;
+                return hattrie_usenode(T, parent);
             }
         }
     }
@@ -359,31 +349,25 @@ value_t* hattrie_tryget(hattrie_t* T, const char* key, size_t len)
     node_ptr parent = T->root;
     assert(*parent.flag & NODE_TYPE_TRIE);
 
-    if (len == 0) return &parent.t->val;
-    node_ptr node = parent.t->xs[(unsigned char) *key];
+    if (len == 0) return NULL;
 
-    while (*node.flag & NODE_TYPE_TRIE && len > 1) {
-        ++key;
-        --len;
-        parent = node;
-        node   = node.t->xs[(unsigned char) *key];
-    }
-
-
-    /* if the key has been consumed on a trie node, use its value */
+    /* do not consume node to last node */
+    node_ptr node = hattrie_consume(&parent, &key, &len, 1);
+    
+    /* if the trie node consumes value, use it */
     if (*node.flag & NODE_TYPE_TRIE) {
-        if (!(node.t->flag & NODE_HAS_VAL)) {
-            node.t->flag |= NODE_HAS_VAL;
-            ++T->m;
+        if (node.t->flag & NODE_HAS_VAL) {
+            return &node.t->val;
         }
-        return &node.t->val;
+        return NULL;
+    /* pure bucket holds only key suffixes */
+    } else if (*node.flag & NODE_TYPE_PURE_BUCKET) {
+        ++key; 
+        --len;
     }
-    else if (*node.flag & NODE_TYPE_PURE_BUCKET) {
-        return ahtable_tryget(node.b, key + 1, len - 1);
-    }
-    else {
-        return ahtable_tryget(node.b, key, len);
-    }
+    /* hybrid bucket holds suffixes for parent */
+    
+    return ahtable_tryget(node.b, key, len);
 }
 
 
