@@ -132,7 +132,7 @@ static node_ptr hattrie_find(hattrie_t* T, const char **key, size_t *len)
     /* pure bucket holds only key suffixes, skip current char */
     if (*node.flag & NODE_TYPE_PURE_BUCKET) {
         *key += 1; 
-        *len += 1;
+        *len -= 1;
     }
     
     /* do not scan bucket, it's not needed for this operation */
