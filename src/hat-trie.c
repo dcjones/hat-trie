@@ -90,13 +90,53 @@ static node_ptr hattrie_consume(node_ptr *p, const char **k, size_t *l, unsigned
 }
 
 /* use node value and return pointer to it */
-static inline value_t* hattrie_usenode(hattrie_t *T, node_ptr n)
+static inline value_t* hattrie_useval(hattrie_t *T, node_ptr n)
 {
     if (!(n.t->flag & NODE_HAS_VAL)) {
         n.t->flag |= NODE_HAS_VAL;
         ++T->m;
     }
     return &n.t->val;
+}
+
+/* clear node value if exists */
+static inline int hattrie_clrval(hattrie_t *T, node_ptr n)
+{
+    if (n.t->flag & NODE_HAS_VAL) {
+        n.t->flag &= ~NODE_HAS_VAL;
+        n.t->val = 0;
+        --T->m;
+        return 0;
+    }
+    return -1;
+}
+
+/* find node in trie */
+static node_ptr hattrie_find(hattrie_t* T, const char **key, size_t *len)
+{
+    node_ptr parent = T->root;
+    assert(*parent.flag & NODE_TYPE_TRIE);
+
+    if (*len == 0) return parent;
+
+    node_ptr node = hattrie_consume(&parent, key, len, 1);
+    
+    /* if the trie node consumes value, use it */
+    if (*node.flag & NODE_TYPE_TRIE) {
+        if (!(node.t->flag & NODE_HAS_VAL)) {
+            node.flag = NULL;
+        }
+        return node;
+    }
+
+    /* pure bucket holds only key suffixes, skip current char */
+    if (*node.flag & NODE_TYPE_PURE_BUCKET) {
+        *key += 1; 
+        *len += 1;
+    }
+    
+    /* do not scan bucket, it's not needed for this operation */
+    return node;
 }
 
 hattrie_t* hattrie_create()
@@ -291,7 +331,7 @@ value_t* hattrie_get(hattrie_t* T, const char* key, size_t len)
     node_ptr parent = T->root;
     assert(*parent.flag & NODE_TYPE_TRIE);
 
-    if (len == 0) return NULL;
+    if (len == 0) return &parent.t->val;
 
     /* consume all trie nodes, now parent must be trie and child anything */
     node_ptr node = hattrie_consume(&parent, &key, &len, 0);
@@ -300,10 +340,10 @@ value_t* hattrie_get(hattrie_t* T, const char* key, size_t len)
     /* if the key has been consumed on a trie node, use its value */
     if (len == 0) {
         if (*node.flag & NODE_TYPE_TRIE) {
-            return hattrie_usenode(T, node);
+            return hattrie_useval(T, node);
         }
         else if (*node.flag & NODE_TYPE_HYBRID_BUCKET) {
-            return hattrie_usenode(T, parent);
+            return hattrie_useval(T, parent);
         }
     }
 
@@ -319,10 +359,10 @@ value_t* hattrie_get(hattrie_t* T, const char* key, size_t len)
         /* if the key has been consumed on a trie node, use its value */
         if (len == 0) {
             if (*node.flag & NODE_TYPE_TRIE) {
-                return hattrie_usenode(T, node);
+                return hattrie_useval(T, node);
             }
             else if (*node.flag & NODE_TYPE_HYBRID_BUCKET) {
-                return hattrie_usenode(T, parent);
+                return hattrie_useval(T, parent);
             }
         }
     }
@@ -346,29 +386,21 @@ value_t* hattrie_get(hattrie_t* T, const char* key, size_t len)
 
 value_t* hattrie_tryget(hattrie_t* T, const char* key, size_t len)
 {
-    node_ptr parent = T->root;
-    assert(*parent.flag & NODE_TYPE_TRIE);
-
-    if (len == 0) return NULL;
-
-    /* do not consume node to last node */
-    node_ptr node = hattrie_consume(&parent, &key, &len, 1);
+    /* find node for given key */
+    node_ptr node = hattrie_find(T, &key, &len);
+    if (node.flag == NULL) {
+        return NULL;
+    }
     
     /* if the trie node consumes value, use it */
     if (*node.flag & NODE_TYPE_TRIE) {
-        if (node.t->flag & NODE_HAS_VAL) {
-            return &node.t->val;
-        }
-        return NULL;
-    /* pure bucket holds only key suffixes */
-    } else if (*node.flag & NODE_TYPE_PURE_BUCKET) {
-        ++key; 
-        --len;
+        return &node.t->val;
     }
-    /* hybrid bucket holds suffixes for parent */
     
     return ahtable_tryget(node.b, key, len);
 }
+
+
 
 
 /* plan for iteration:
@@ -449,6 +481,8 @@ static void hattrie_iter_nextnode(hattrie_iter_t* i)
         /* push all child nodes from right to left */
         int j;
         for (j = NODE_MAXCHAR; j >= 0; --j) {
+            
+            /* skip repeated pointers to hybrid bucket */
             if (j < NODE_MAXCHAR && node.t->xs[j].t == node.t->xs[j + 1].t) continue;
 
             // push stack
