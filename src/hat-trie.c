@@ -401,6 +401,32 @@ value_t* hattrie_tryget(hattrie_t* T, const char* key, size_t len)
 }
 
 
+int hattrie_del(hattrie_t* T, const char* key, size_t len)
+{
+    node_ptr parent = T->root;
+    assert(*parent.flag & NODE_TYPE_TRIE);
+
+    /* find node for deletion */
+    node_ptr node = hattrie_find(T, &key, &len);
+    if (node.flag == NULL) {
+        return -1;
+    }
+    
+    /* if consumed on a trie node, clear the value */
+    if (*node.flag & NODE_TYPE_TRIE) {
+        return hattrie_clrval(T, node);
+    }
+
+    /* remove from bucket */
+    size_t m_old = ahtable_size(node.b);
+    int ret =  ahtable_del(node.b, key, len);
+    T->m -= (m_old - ahtable_size(node.b));
+    
+    /* merge empty buckets */
+    /*! \todo */
+    
+    return ret;
+}
 
 
 /* plan for iteration:
