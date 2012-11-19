@@ -213,4 +213,29 @@ value_t str_map_get(const str_map* T, const char* key, size_t keylen)
     return 0;
 }
 
+void str_map_del(str_map* T, const char* key, size_t keylen)
+{
+    uint32_t h = hash(key, keylen) % T->n;
+
+    str_map_pair* u = T->A[h];
+    str_map_pair* p = NULL;
+    while (u) {
+        
+        if (u->keylen == keylen && memcmp(u->key, key, keylen) == 0) {
+            if (p) {
+                p->next = u->next;
+            } else {
+                T->A[h] = u->next;
+            }
+            free(u->key);
+            free(u);
+            --T->m;
+            return;
+        }
+
+        p = u;
+        u = u->next;
+    }
+
+}
 

@@ -44,7 +44,7 @@ str_map* str_map_create(void);
 void     str_map_destroy(str_map*);
 void     str_map_set(str_map*, const char* key, size_t keylen, value_t value);
 value_t  str_map_get(const str_map*, const char* key, size_t keylen);
-
+void     str_map_del(str_map* T, const char* key, size_t keylen);
 
 #if defined(__cplusplus)
 }
