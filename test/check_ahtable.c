@@ -82,6 +82,17 @@ void test_ahtable_insert()
                             *u, v);
         }
     }
+    
+    /* delete some keys */
+    for (j = 0; i < k/100; ++j) {
+        i = rand() % n;
+        ahtable_del(T, xs[i], strlen(xs[i]));
+        str_map_del(M, xs[i], strlen(xs[i]));
+        u = ahtable_tryget(T, xs[i], strlen(xs[i]));
+        if (u) {
+            fprintf(stderr, "[error] deleted node found in ahtable\n");
+        }
+    }
 
     fprintf(stderr, "done.\n");
 }
@@ -152,7 +163,7 @@ void test_ahtable_sorted_iteration()
     value_t  v;
 
     char* prev_key = malloc(m_high + 1);
-    size_t prev_len;
+    size_t prev_len = 0;
 
     const char *key = NULL;
     size_t len = 0;

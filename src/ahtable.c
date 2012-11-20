@@ -115,12 +115,13 @@ static void ahtable_expand(ahtable_t* T)
      * One little shortcut we can take on the memory allocation front is to
      * figure out how much memory each slot needs in advance.
      */
+    assert(T->n > 0);
     size_t new_n = 2 * T->n;
     size_t* slot_sizes = malloc_or_die(new_n * sizeof(size_t));
     memset(slot_sizes, 0, new_n * sizeof(size_t));
 
     const char* key;
-    size_t len;
+    size_t len = 0;
     size_t m = 0;
     ahtable_iter_t* i = ahtable_iter_begin(T, false);
     while (!ahtable_iter_finished(i)) {
@@ -255,7 +256,7 @@ value_t* ahtable_tryget(ahtable_t* T, const char* key, size_t len )
 }
 
 
-void ahtable_del(ahtable_t* T, const char* key, size_t len)
+int ahtable_del(ahtable_t* T, const char* key, size_t len)
 {
     uint32_t i = hash(key, len) % T->n;
     size_t k;
@@ -278,11 +279,11 @@ void ahtable_del(ahtable_t* T, const char* key, size_t len)
         if (memcmp(s, key, len) == 0) {
             /* move everything over, resize the array */
             unsigned char* t = s + len + sizeof(value_t);
-            s -= k > 255 ? 2 : 1;
+            s -= k < 128 ? 1 : 2;
             memmove(s, t, T->slot_sizes[i] - (size_t) (t - T->slots[i]));
             T->slot_sizes[i] -= (size_t) (t - s);
             --T->m;
-            return;
+            return 0;
         }
         /* key not found. */
         else {
@@ -292,6 +293,7 @@ void ahtable_del(ahtable_t* T, const char* key, size_t len)
     }
 
     // Key was not found. Do nothing.
+    return -1;
 }
 
 

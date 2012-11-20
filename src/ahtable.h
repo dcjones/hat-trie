@@ -72,7 +72,7 @@ value_t* ahtable_get (ahtable_t*, const char* key, size_t len);
 value_t* ahtable_tryget (ahtable_t*, const char* key, size_t len);
 
 
-void ahtable_del(ahtable_t*, const char* key, size_t len);
+int ahtable_del(ahtable_t*, const char* key, size_t len);
 
 
 typedef struct ahtable_iter_t_ ahtable_iter_t;
