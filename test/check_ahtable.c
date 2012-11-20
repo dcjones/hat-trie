@@ -208,7 +208,7 @@ int main()
 {
     setup();
     test_ahtable_insert();
-    test_ahtable_iteration(false);
+    test_ahtable_iteration();
     teardown();
 
     setup();
