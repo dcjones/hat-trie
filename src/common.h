@@ -12,7 +12,9 @@
 #ifndef HATTRIE_COMMON_H
 #define HATTRIE_COMMON_H
 
-typedef unsigned long value_t;
+#include "pstdint.h"
+
+typedef uintptr_t value_t;
 
 #endif
 
