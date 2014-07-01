@@ -40,3 +40,8 @@ Tests
 Build and run the tests:
 
     make check
+
+Other Language Bindings
+-----------------------
+ * Ruby - https://github.com/luikore/triez
+ * Python - https://github.com/kmike/hat-trie
