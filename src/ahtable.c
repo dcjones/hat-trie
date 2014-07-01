@@ -14,7 +14,7 @@
 
 
 const double ahtable_max_load_factor = 100000.0; /* arbitrary large number => don't resize */
-const const size_t ahtable_initial_size = 4096;
+const size_t ahtable_initial_size = 4096;
 static const uint16_t LONG_KEYLEN_MASK = 0x7fff;
 
 static size_t keylen(slot_t s) {
