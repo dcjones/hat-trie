@@ -32,3 +32,9 @@ Installation
 To use the library, include `hat-trie.h` and link using `lhat-trie`.
 
 
+Tests
+-----
+
+Build and run the tests:
+
+    make check
