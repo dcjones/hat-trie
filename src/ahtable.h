@@ -12,7 +12,7 @@
  *
  * Briefly, the idea is, as opposed to separate chaining with linked lists, to
  * store keys contiguously in one big array, thereby improving the caching
- * behavior, and reducing space requirments.
+ * behavior, and reducing space requirements.
  *
  */
 
