@@ -66,5 +66,3 @@ value_t*        hattrie_iter_val       (hattrie_iter_t*);
 #endif
 
 #endif
-
-
