@@ -56,7 +56,7 @@ struct hattrie_t_
     size_t m;      // number of stored keys
 };
 
-/* Create a new trie node with all pointer pointing to the given child (which
+/* Create a new trie node with all pointers pointing to the given child (which
  * can be NULL). */
 static trie_node_t* alloc_trie_node(hattrie_t* T, node_ptr child)
 {
