@@ -187,7 +187,7 @@ void test_hattrie_sorted_iteration()
         ++count;
 
         key = hattrie_iter_key(i, &len);
-        
+
         /* memory for key may be changed on iter, copy it */
         strncpy(key_copy, key, len);
 
@@ -266,8 +266,3 @@ int main()
 
     return 0;
 }
-
-
-
-
-
