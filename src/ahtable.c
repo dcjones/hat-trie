@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2011 by Daniel C. Jones <dcjones@cs.washington.edu>
  *
- * See ahtable.h for description of the Arrah Hash Table.
+ * See ahtable.h for description of the Array Hash Table.
  *
  */
 
