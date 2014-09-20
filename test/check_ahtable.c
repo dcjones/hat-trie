@@ -203,6 +203,50 @@ void test_ahtable_sorted_iteration()
     fprintf(stderr, "done.\n");
 }
 
+void test_ahtable_save_load()
+{
+    fprintf(stderr, "saving ahtable ... \n");
+
+    FILE* fd_w = fopen("test.aht", "w");
+    ahtable_save(T, fd_w);
+    fclose(fd_w);
+
+    fprintf(stderr, "loading ahtable ... \n");
+
+    FILE* fd_r = fopen("test.aht", "r");
+    ahtable_t* U = ahtable_load(fd_r);
+    fclose(fd_r);
+
+    fprintf(stderr, "comparing ahtable ... \n");
+
+    ahtable_iter_t* i = ahtable_iter_begin(T, false);
+    ahtable_iter_t* j = ahtable_iter_begin(U, false);
+    const char *k1 = NULL;
+    const char *k2 = NULL;
+    value_t* v1;
+    value_t* v2;
+    size_t len1 = 0;
+    size_t len2 = 0;
+    while (!ahtable_iter_finished(i) && !ahtable_iter_finished(j)) {
+        k1 = ahtable_iter_key(i, &len1);
+        v1 = ahtable_iter_val(i);
+
+        k2 = ahtable_iter_key(j, &len2);
+        v2 = ahtable_iter_val(j);
+
+        if(len1 != len2) {
+            fprintf(stderr, "[error] key lengths don't match (%lu, %lu)\n", len1, len2);
+        }
+
+        if(*v1 != *v2) {
+            fprintf(stderr, "[error] values don't match (%lu, %lu)\n", *v1, *v2);
+        }
+
+        ahtable_iter_next(i);
+    }
+    ahtable_iter_free(i);
+}
+
 
 int main()
 {
@@ -214,6 +258,11 @@ int main()
     setup();
     test_ahtable_insert();
     test_ahtable_sorted_iteration();
+    teardown();
+
+    setup();
+    test_ahtable_insert();
+    test_ahtable_save_load();
     teardown();
 
     return 0;

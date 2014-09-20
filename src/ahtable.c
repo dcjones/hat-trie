@@ -10,6 +10,7 @@
 #include "ahtable.h"
 #include "misc.h"
 #include "murmurhash3.h"
+#include "portable_endian.h"
 #include <assert.h>
 #include <string.h>
 
@@ -50,6 +51,90 @@ ahtable_t* ahtable_create_n(size_t n)
     return table;
 }
 
+void ahtable_save(ahtable_t* table, FILE* fd)
+{
+    if (table == NULL) return;
+
+    assert(sizeof(unsigned long long) == 8);
+
+    /* Store table metadata as 64-bit network-ordered (big-endian) values so
+     * that architectures with larger capacity can take advantage of size.
+     */
+    unsigned long long n = htobe64(table->n);
+    fwrite(&n, sizeof(unsigned long long), 1, fd);
+
+    unsigned long long m = htobe64(table->m);
+    fwrite(&m, sizeof(unsigned long long), 1, fd);
+
+    unsigned long long max_m = htobe64(table->max_m);
+    fwrite(&max_m, sizeof(unsigned long long), 1, fd);
+
+    assert(sizeof(uint8_t) == 1);
+    fwrite(&table->flag, sizeof(uint8_t), 1, fd);
+
+    assert(sizeof(unsigned char) == 1);
+    fwrite(&table->c0, sizeof(unsigned char), 1, fd);
+    fwrite(&table->c1, sizeof(unsigned char), 1, fd);
+
+    size_t i;
+    uint32_t slot_size;
+    for (i = 0; i < table->n; ++i) {
+        slot_size = htobe32(table->slot_sizes[i]);
+        fwrite(&slot_size, sizeof(uint32_t), 1, fd);
+        if(table->slot_sizes[i] > 0) {
+            fwrite(table->slots[i], sizeof(unsigned char), table->slot_sizes[i], fd);
+        }
+    }
+}
+
+/* Loads a 64-bit value from disk and casts it into a size_t, which may or may
+ * not be 64-bit. As long as the loaded value fits inside size_t, we're good.
+ * Returns 0 if the value didn't fit, 1 otherwise.
+ */
+uint8_t read_u64bit_to_size_t(size_t* dest, FILE* fd)
+{
+    unsigned long long value;
+    assert(sizeof(unsigned long long) == 8);
+    fread(&value, sizeof(unsigned long long), 1, fd);
+    if (value > (size_t)-1) {
+        printf("Unable to load 64-bit data from file\n");
+        return 0;
+    } else {
+        *dest = (size_t)be64toh(value);
+        return 1;
+    }
+}
+
+ahtable_t* ahtable_load(FILE* fd)
+{
+    size_t n;
+    if (!read_u64bit_to_size_t(&n, fd)) return NULL;
+    ahtable_t* table = ahtable_create_n(n);
+
+    if (!read_u64bit_to_size_t(&table->m, fd)) return NULL;
+
+    if (!read_u64bit_to_size_t(&table->max_m, fd)) return NULL;
+
+    assert(sizeof(uint8_t) == 1);
+    fread(&table->flag, sizeof(uint8_t), 1, fd);
+
+    assert(sizeof(unsigned char) == 1);
+    fread(&table->c0, sizeof(unsigned char), 1, fd);
+    fread(&table->c1, sizeof(unsigned char), 1, fd);
+
+    size_t i;
+    uint32_t slot_size;
+    for (i = 0; i < table->n; ++i) {
+        fread(&slot_size, sizeof(uint32_t), 1, fd);
+        table->slot_sizes[i] = be32toh(slot_size);
+        if(table->slot_sizes[i] > 0) {
+            table->slots[i] = malloc_or_die(table->slot_sizes[i]);
+            fread(table->slots[i], sizeof(unsigned char), table->slot_sizes[i], fd);
+        }
+    }
+
+    return table;
+}
 
 void ahtable_free(ahtable_t* table)
 {
