@@ -10,9 +10,31 @@
  *    string hash tables. String Processing and Information Retrieval (pp.
  *    91–102). Springer.
  *
- * Briefly, the idea is, as opposed to separate chaining with linked lists, to
- * store keys contiguously in one big array, thereby improving the caching
- * behavior, and reducing space requirements.
+ *    http://naskitis.com/naskitis-spire05.pdf
+ *
+ * Briefly, the idea behind an Array Hash Table is, as opposed to separate
+ * chaining with linked lists, to store keys contiguously in one big array,
+ * thereby improving the caching behavior, and reducing space requirements.
+ *
+ * ahtable keeps a fixed number (array) of slots, each of which contains a
+ * variable number of key/value pairs. Each key is preceded by its length--
+ * one byte for lengths < 128 bytes, and TWO bytes for longer keys. The least
+ * significant bit of the first byte indicates, if set, that the size is two
+ * bytes. The slot number where a key/value pair goes is determined by finding
+ * the murmurhashed integer value of its key, modulus the number of slots.
+ * The number of slots expands in a stepwise fashion when the number of
+ # key/value pairs reaches an arbitrarily large number.
+ *
+ * +-------+-------+-------+-------+-------+-------+
+ * |   0   |   1   |   2   |   3   |  ...  |   N   |
+ * +-------+-------+-------+-------+-------+-------+
+ *     |       |       |       |               |
+ *     v       |       |       v               v
+ *    NULL     |       |     4html[VALUE]     etc.
+ *             |       v
+ *             |     5space[VALUE]4jury[VALUE]
+ *             v
+ *           6justice[VALUE]3car[VALUE]4star[VALUE]
  *
  */
 
@@ -58,17 +80,16 @@ size_t     ahtable_size   (const ahtable_t*); // Number of stored keys.
 
 
 /** Find the given key in the table, inserting it if it does not exist, and
- * returning a pointer to it's key.
+ * returning a pointer to it's value.
  *
  * This pointer is not guaranteed to be valid after additional calls to
- * ahtable_get, ahtable_del, ahtable_clear, or other functions that modifies the
+ * ahtable_get, ahtable_del, ahtable_clear, or other functions that modify the
  * table.
  */
 value_t* ahtable_get (ahtable_t*, const char* key, size_t len);
 
 
-/** Find a given key in the table, returning a NULL pointer if it does not
- * exist. */
+/* Find a given key in the table, return a NULL pointer if it does not exist. */
 value_t* ahtable_tryget (ahtable_t*, const char* key, size_t len);
 
 
