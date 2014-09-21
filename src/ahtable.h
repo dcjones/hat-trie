@@ -76,7 +76,7 @@ ahtable_t* ahtable_create_n (size_t n);     // Create an empty hash table, with
                                             //  n slots reserved.
 
 ahtable_t* ahtable_load     (FILE* fd);               // Load a hash table from a file handle.
-void       ahtable_save     (ahtable_t* T, FILE* fd); // Save a hash table to a file handle.
+void       ahtable_save     (const ahtable_t* T, FILE* fd); // Save a hash table to a file handle.
 
 void       ahtable_free   (ahtable_t*);       // Free all memory used by a table.
 void       ahtable_clear  (ahtable_t*);       // Remove all entries.
