@@ -154,6 +154,10 @@ hattrie_t* hattrie_create()
     return T;
 }
 
+size_t hattrie_size(hattrie_t* T)
+{
+    return T->m;
+}
 
 static void hattrie_free_node(node_ptr node)
 {
