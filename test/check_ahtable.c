@@ -243,8 +243,10 @@ void test_ahtable_save_load()
         }
 
         ahtable_iter_next(i);
+        ahtable_iter_next(j);
     }
     ahtable_iter_free(i);
+    ahtable_iter_free(j);
 }
 
 
