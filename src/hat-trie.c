@@ -435,6 +435,7 @@ value_t* hattrie_tryget(hattrie_t* T, const char* key, size_t len)
 int hattrie_del(hattrie_t* T, const char* key, size_t len)
 {
     node_ptr parent = T->root;
+    HT_UNUSED(parent);
     assert(*parent.flag & NODE_TYPE_TRIE);
 
     /* find node for deletion */
@@ -684,4 +685,14 @@ value_t* hattrie_iter_val(hattrie_iter_t* i)
     if (hattrie_iter_finished(i)) return NULL;
 
     return ahtable_iter_val(i->i);
+}
+
+
+
+bool hattrie_iter_equal(const hattrie_iter_t* a,
+                        const hattrie_iter_t* b)
+{
+    return a->T      == b->T &&
+           a->sorted == b->sorted &&
+           a->i      == b->i;
 }
