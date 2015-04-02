@@ -388,7 +388,7 @@ static const char* ahtable_sorted_iter_key(ahtable_sorted_iter_t* i, size_t* len
     if (ahtable_sorted_iter_finished(i)) return NULL;
 
     slot_t s = i->xs[i->i];
-    *len = keylen(s);
+    if (len) *len = keylen(s);
 
     return (const char*) (s + (*len < 128 ? 1 : 2));
 }
@@ -481,7 +481,7 @@ static const char* ahtable_unsorted_iter_key(ahtable_unsorted_iter_t* i, size_t*
         s += 1;
     }
 
-    *len = k;
+    if(len) *len = k;
     return (const char*) s;
 }
 
