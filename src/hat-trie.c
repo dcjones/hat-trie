@@ -211,6 +211,19 @@ void hattrie_free(hattrie_t* T)
     free(T);
 }
 
+
+void hattrie_clear(hattrie_t* T)
+{
+    hattrie_free_node(T->root);
+    node_ptr node;
+    node.b = ahtable_create();
+    node.b->flag = NODE_TYPE_HYBRID_BUCKET;
+    node.b->c0 = 0x00;
+    node.b->c1 = 0xff;
+    T->root.t = alloc_trie_node(T, node);
+}
+
+
 /* Perform one split operation on the given node with the given parent.
  */
 static void hattrie_split(hattrie_t* T, node_ptr parent, node_ptr node)
