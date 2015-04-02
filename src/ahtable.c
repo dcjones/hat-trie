@@ -68,6 +68,18 @@ size_t ahtable_size(const ahtable_t* table)
 }
 
 
+size_t ahtable_sizeof(const ahtable_t* table)
+{
+    size_t nbytes = sizeof(ahtable_t) +
+                    table->n * (sizeof(size_t) + sizeof(slot_t));
+    size_t i;
+    for (i = 0; i < table->n; ++i) {
+        nbytes += table->slot_sizes[i];
+    }
+    return nbytes;
+}
+
+
 void ahtable_clear(ahtable_t* table)
 {
     size_t i;

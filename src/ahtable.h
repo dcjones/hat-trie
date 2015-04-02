@@ -55,7 +55,7 @@ typedef unsigned char* slot_t;
 typedef struct ahtable_t_
 {
     /* these fields are reserved for hattrie to fiddle with */
-    uint8_t flag; 
+    uint8_t flag;
     unsigned char c0;
     unsigned char c1;
 
@@ -77,6 +77,7 @@ ahtable_t* ahtable_create_n (size_t n);     // Create an empty hash table, with
 void       ahtable_free   (ahtable_t*);       // Free all memory used by a table.
 void       ahtable_clear  (ahtable_t*);       // Remove all entries.
 size_t     ahtable_size   (const ahtable_t*); // Number of stored keys.
+size_t     ahtable_sizeof (const ahtable_t*); // Memory used by the table in bytes.
 
 
 /** Find the given key in the table, inserting it if it does not exist, and

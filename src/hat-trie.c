@@ -56,6 +56,37 @@ struct hattrie_t_
     size_t m;      // number of stored keys
 };
 
+
+
+size_t hattrie_size(const hattrie_t* T)
+{
+    return T->m;
+}
+
+
+static size_t node_sizeof(node_ptr node)
+{
+    if (*node.flag & NODE_TYPE_TRIE) {
+        size_t nbytes = sizeof(trie_node_t);
+        size_t i;
+        nbytes += node_sizeof(node.t->xs[0]);
+        for (i = 1; i < NODE_CHILDS; ++i) {
+            if (node.t->xs[i].t != node.t->xs[i-1].t) nbytes += node_sizeof(node.t->xs[i]);
+        }
+        return nbytes;
+    }
+    else {
+        return ahtable_sizeof(node.b);
+    }
+}
+
+
+size_t hattrie_sizeof(const hattrie_t* T)
+{
+    return sizeof(hattrie_t) + node_sizeof(T->root);
+}
+
+
 /* Create a new trie node with all pointers pointing to the given child (which
  * can be NULL). */
 static trie_node_t* alloc_trie_node(hattrie_t* T, node_ptr child)

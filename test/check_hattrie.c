@@ -91,6 +91,8 @@ void test_hattrie_insert()
         }
     }
 
+    fprintf(stderr, "sizeof: %zu\n", hattrie_sizeof(T));
+
     fprintf(stderr, "deleting %zu keys ... \n", d);
     for (j = 0; j < d; ++j) {
         str_map_del(M, ds[j], strlen(ds[j]));

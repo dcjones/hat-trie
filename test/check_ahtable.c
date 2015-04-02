@@ -82,7 +82,9 @@ void test_ahtable_insert()
                             *u, v);
         }
     }
-    
+
+    fprintf(stderr, "sizeof: %zu\n", ahtable_sizeof(T));
+
     /* delete some keys */
     for (j = 0; i < k/100; ++j) {
         i = rand() % n;
