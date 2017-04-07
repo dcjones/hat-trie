@@ -4,7 +4,7 @@ AM_INIT_AUTOMAKE([foreign])
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
 AC_CONFIG_MACRO_DIR([m4])
 
-base_CFLAGS="-std=c99 -Wall -Wextra -pedantic"
+base_CFLAGS="-std=gnu99 -Wall -Wextra -pedantic"
 opt_CFLAGS="${base_CFLAGS} -O3"
 dbg_CFLAGS="${base_CFLAGS} -g -O0"
 
