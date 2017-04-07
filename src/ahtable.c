@@ -259,6 +259,11 @@ static value_t* get_key(ahtable_t* table, const char* key, size_t len, bool inse
 
 value_t* ahtable_get(ahtable_t* table, const char* key, size_t len)
 {
+    if (len > 32767) {
+        fprintf(stderr, "HAT-trie/AH-table cannot store keys longer than 32768\n");
+        exit(EXIT_FAILURE);
+    }
+
     return get_key(table, key, len, true);
 }
 
