@@ -30,7 +30,6 @@ typedef struct hattrie_t_ hattrie_t;
 
 hattrie_t* hattrie_create (void);             // Create an empty hat-trie.
 void       hattrie_free   (hattrie_t*);       // Free all memory used by a trie.
-hattrie_t* hattrie_dup    (const hattrie_t*); // Duplicate an existing trie.
 void       hattrie_clear  (hattrie_t*);       // Remove all entries.
 size_t     hattrie_size   (const hattrie_t*); // Number of stored keys.
 size_t     hattrie_sizeof (const hattrie_t*); // Memory used in structure in bytes.
