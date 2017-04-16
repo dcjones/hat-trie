@@ -34,6 +34,7 @@ void       hattrie_clear  (hattrie_t*);       // Remove all entries.
 size_t     hattrie_size   (const hattrie_t*); // Number of stored keys.
 size_t     hattrie_sizeof (const hattrie_t*); // Memory used in structure in bytes.
 
+size_t     hattrie_size(hattrie_t* T);
 
 /** Find the given key in the trie, inserting it if it does not exist, and
  * returning a pointer to it's key.
