@@ -1,5 +1,5 @@
 
-AC_INIT([hat-trie], [0.1.1], [dcjones@cs.washington.edu])
+AC_INIT([hat-trie], [0.1.2], [dcjones@cs.washington.edu])
 AM_INIT_AUTOMAKE([foreign])
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
 AC_CONFIG_MACRO_DIR([m4])
