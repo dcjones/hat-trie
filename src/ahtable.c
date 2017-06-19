@@ -91,11 +91,12 @@ static uint8_t read_u64bit_to_size_t(size_t* dest, FILE* fd)
 {
     uint64_t value;
     fread(&value, sizeof(uint64_t), 1, fd);
+    value = be64toh(value);
     if (value > (size_t)-1) {
         printf("Unable to load 64-bit data from file\n");
         return 0;
     } else {
-        *dest = (size_t)be64toh(value);
+        *dest = (size_t)value;
         return 1;
     }
 }
