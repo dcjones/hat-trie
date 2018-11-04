@@ -578,6 +578,12 @@ static void hattrie_iter_nextnode(hattrie_iter_t* i)
 }
 
 
+static inline bool hattrie_ahtable_iter_finished(ahtable_iter_t* i)
+{
+    return i == NULL || ahtable_iter_finished(i);
+}
+
+
 hattrie_iter_t* hattrie_iter_begin(const hattrie_t* T, bool sorted)
 {
     hattrie_iter_t* i = malloc_or_die(sizeof(hattrie_iter_t));
@@ -597,15 +603,15 @@ hattrie_iter_t* hattrie_iter_begin(const hattrie_t* T, bool sorted)
     i->stack->level  = 0;
 
 
-    while (((i->i == NULL || ahtable_iter_finished(i->i)) && !i->has_nil_key) &&
-           i->stack != NULL ) {
-
+    while (hattrie_ahtable_iter_finished(i->i) &&
+           !i->has_nil_key &&
+           i->stack != NULL) {
         ahtable_iter_free(i->i);
         i->i = NULL;
         hattrie_iter_nextnode(i);
     }
 
-    if (i->i != NULL && ahtable_iter_finished(i->i)) {
+    if (hattrie_ahtable_iter_finished(i->i)) {
         ahtable_iter_free(i->i);
         i->i = NULL;
     }
@@ -627,15 +633,15 @@ void hattrie_iter_next(hattrie_iter_t* i)
         hattrie_iter_nextnode(i);
     }
 
-    while (((i->i == NULL || ahtable_iter_finished(i->i)) && !i->has_nil_key) &&
-           i->stack != NULL ) {
-
+    while (hattrie_ahtable_iter_finished(i->i) &&
+           !i->has_nil_key &&
+           i->stack != NULL) {
         ahtable_iter_free(i->i);
         i->i = NULL;
         hattrie_iter_nextnode(i);
     }
 
-    if (i->i != NULL && ahtable_iter_finished(i->i)) {
+    if (hattrie_ahtable_iter_finished(i->i)) {
         ahtable_iter_free(i->i);
         i->i = NULL;
     }

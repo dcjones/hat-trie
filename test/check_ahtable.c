@@ -236,11 +236,13 @@ void test_ahtable_save_load()
         k2 = ahtable_iter_key(j, &len2);
         v2 = ahtable_iter_val(j);
 
-        if(len1 != len2) {
+        if (len1 != len2) {
             fprintf(stderr, "[error] key lengths don't match (%lu, %lu)\n", len1, len2);
+        } else if (strncmp(k1, k2, len1) != 0) {
+            fprintf(stderr, "[error] key strings don't match (%s, %s)\n", k1, k2);
         }
 
-        if(*v1 != *v2) {
+        if (*v1 != *v2) {
             fprintf(stderr, "[error] values don't match (%lu, %lu)\n", *v1, *v2);
         }
 

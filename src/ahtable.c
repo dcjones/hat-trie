@@ -90,7 +90,10 @@ void ahtable_save(const ahtable_t* table, FILE* fd)
 static uint8_t read_u64bit_to_size_t(size_t* dest, FILE* fd)
 {
     uint64_t value;
-    fread(&value, sizeof(uint64_t), 1, fd);
+    if (fread(&value, sizeof(uint64_t), 1, fd) != 1) {
+        printf("Unable to read 64-bit data from file\n");
+        return 0;
+    }
     value = be64toh(value);
     if (value > (size_t)-1) {
         printf("Unable to load 64-bit data from file\n");
@@ -101,34 +104,6 @@ static uint8_t read_u64bit_to_size_t(size_t* dest, FILE* fd)
     }
 }
 
-ahtable_t* ahtable_load(FILE* fd)
-{
-    size_t n;
-    if (!read_u64bit_to_size_t(&n, fd)) return NULL;
-    ahtable_t* table = ahtable_create_n(n);
-
-    if (!read_u64bit_to_size_t(&table->m, fd)) return NULL;
-
-    if (!read_u64bit_to_size_t(&table->max_m, fd)) return NULL;
-
-    fread(&table->flag, sizeof(uint8_t), 1, fd);
-
-    fread(&table->c0, sizeof(unsigned char), 1, fd);
-    fread(&table->c1, sizeof(unsigned char), 1, fd);
-
-    size_t i;
-    uint32_t slot_size;
-    for (i = 0; i < table->n; ++i) {
-        fread(&slot_size, sizeof(uint32_t), 1, fd);
-        table->slot_sizes[i] = be32toh(slot_size);
-        if(table->slot_sizes[i] > 0) {
-            table->slots[i] = malloc_or_die(table->slot_sizes[i]);
-            fread(table->slots[i], sizeof(unsigned char), table->slot_sizes[i], fd);
-        }
-    }
-
-    return table;
-}
 
 void ahtable_free(ahtable_t* table)
 {
@@ -138,6 +113,45 @@ void ahtable_free(ahtable_t* table)
     free(table->slots);
     free(table->slot_sizes);
     free(table);
+}
+
+
+ahtable_t* ahtable_load(FILE* fd)
+{
+    size_t n;
+    if (!read_u64bit_to_size_t(&n, fd)) return NULL;
+    ahtable_t* table = ahtable_create_n(n);
+
+    if (!read_u64bit_to_size_t(&table->m, fd) ||
+            !read_u64bit_to_size_t(&table->max_m, fd) ||
+            fread(&table->flag, sizeof(uint8_t), 1, fd) != 1 ||
+            fread(&table->c0, sizeof(unsigned char), 1, fd) != 1 ||
+            fread(&table->c1, sizeof(unsigned char), 1, fd) != 1) {
+        ahtable_free(table);
+        return NULL;
+    }
+
+    size_t i;
+    uint32_t slot_size;
+    for (i = 0; i < table->n; ++i) {
+        if (fread(&slot_size, sizeof(uint32_t), 1, fd) != 1) {
+            ahtable_free(table);
+            return NULL;
+        }
+        table->slot_sizes[i] = be32toh(slot_size);
+        if(table->slot_sizes[i] > 0) {
+            table->slots[i] = malloc_or_die(table->slot_sizes[i]);
+            if (fread(table->slots[i],
+                      sizeof(unsigned char),
+                      table->slot_sizes[i],
+                      fd) != table->slot_sizes[i]) {
+                ahtable_free(table);
+                return NULL;
+            }
+        }
+    }
+
+    return table;
 }
 
 

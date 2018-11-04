@@ -19,3 +19,11 @@ libtool
 ltmain.sh
 m4
 missing
+compile
+test-driver
+test/bench_sorted_iter
+test/check_ahtable
+test/check_hattrie
+test/test.aht
+test/*.trs
+test/*.log
