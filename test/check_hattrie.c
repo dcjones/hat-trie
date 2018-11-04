@@ -20,6 +20,9 @@ const size_t m_low  = 50;  // minimum length of each string
 const size_t m_high = 500; // maximum length of each string
 const size_t k = 200000;  // number of insertions
 const size_t d = 50000;
+const size_t jump = 4;  // change between each prefix length test
+const size_t d_low = 4;   // minimal prefix length
+const size_t d_high = 16;  // maximal prefix length
 
 char** xs;
 char** ds;
@@ -65,10 +68,11 @@ void teardown()
 }
 
 
-void test_hattrie_insert()
+bool test_hattrie_insert()
 {
     fprintf(stderr, "inserting %zu keys ... \n", k);
 
+    bool passed = true;
     size_t i, j;
     value_t* u;
     value_t  v;
@@ -88,6 +92,7 @@ void test_hattrie_insert()
         if (*u != v) {
             fprintf(stderr, "[error] tally mismatch (reported: %lu, correct: %lu)\n",
                             *u, v);
+            passed = false;
         }
     }
 
@@ -99,22 +104,22 @@ void test_hattrie_insert()
         hattrie_del(T, ds[j], strlen(ds[j]));
         u = hattrie_tryget(T, ds[j], strlen(ds[j]));
         if (u) {
-            fprintf(stderr, "[error] item %zu still found in trie after delete\n",
-                    j);
+            fprintf(stderr, "[error] item %zu still found in trie after delete\n", j);
+            passed = false;
         }
     }
 
     fprintf(stderr, "done.\n");
+    return passed;
 }
 
 
-
-void test_hattrie_iteration()
+bool test_hattrie_iteration()
 {
     fprintf(stderr, "iterating through %zu keys ... \n", k);
 
     hattrie_iter_t* i = hattrie_iter_begin(T, false);
-
+    bool passed = true;
     size_t count = 0;
     value_t* u;
     value_t  v;
@@ -133,9 +138,11 @@ void test_hattrie_iteration()
         if (*u != v) {
             if (v == 0) {
                 fprintf(stderr, "[error] incorrect iteration (%lu, %lu)\n", *u, v);
+                passed = false;
             }
             else {
                 fprintf(stderr, "[error] incorrect iteration tally (%lu, %lu)\n", *u, v);
+                passed = false;
             }
         }
 
@@ -149,11 +156,13 @@ void test_hattrie_iteration()
     if (count != M->m) {
         fprintf(stderr, "[error] iterated through %zu element, expected %zu\n",
                 count, M->m);
+        passed = false;
     }
 
     hattrie_iter_free(i);
 
     fprintf(stderr, "done.\n");
+    return passed;
 }
 
 
@@ -164,12 +173,12 @@ int cmpkey(const char* a, size_t ka, const char* b, size_t kb)
 }
 
 
-void test_hattrie_sorted_iteration()
+bool test_hattrie_sorted_iteration()
 {
     fprintf(stderr, "iterating in order through %zu keys ... \n", k);
 
     hattrie_iter_t* i = hattrie_iter_begin(T, true);
-
+    bool passed = true;
     size_t count = 0;
     value_t* u;
     value_t  v;
@@ -195,6 +204,7 @@ void test_hattrie_sorted_iteration()
 
         if (prev_key != NULL && cmpkey(prev_key, prev_len, key, len) > 0) {
             fprintf(stderr, "[error] iteration is not correctly ordered.\n");
+            passed = false;
         }
 
         u = hattrie_iter_val(i);
@@ -203,9 +213,11 @@ void test_hattrie_sorted_iteration()
         if (*u != v) {
             if (v == 0) {
                 fprintf(stderr, "[error] incorrect iteration (%lu, %lu)\n", *u, v);
+                passed = false;
             }
             else {
                 fprintf(stderr, "[error] incorrect iteration tally (%lu, %lu)\n", *u, v);
+                passed = false;
             }
         }
 
@@ -219,6 +231,7 @@ void test_hattrie_sorted_iteration()
     if (count != M->m) {
         fprintf(stderr, "[error] iterated through %zu element, expected %zu\n",
                 count, M->m);
+        passed = false;
     }
 
     hattrie_iter_free(i);
@@ -226,13 +239,19 @@ void test_hattrie_sorted_iteration()
     free(key_copy);
 
     fprintf(stderr, "done.\n");
+    return passed;
 }
 
 
-void test_trie_non_ascii()
+bool test_hattrie_prefix_iteration() {
+    return false;
+}
+
+
+bool test_hattrie_non_ascii()
 {
     fprintf(stderr, "checking non-ascii... \n");
-
+    bool passed = true;
     value_t* u;
     hattrie_t* T = hattrie_create();
     char* txt = "\x81\x70";
@@ -242,29 +261,89 @@ void test_trie_non_ascii()
 
     u = hattrie_tryget(T, txt, strlen(txt));
     if (*u != 10){
-        fprintf(stderr, "can't store non-ascii strings\n");
+        fprintf(stderr, "[error] can't store non-ascii strings\n");
+        passed = false;
     }
     hattrie_free(T);
 
     fprintf(stderr, "done.\n");
+    return passed;
 }
 
+
+bool test_hattrie_odd_keys()
+{
+    fprintf(stderr, "checking edge-case keys...\n");
+    bool passed = true;
+    value_t* u;
+    hattrie_t* T = hattrie_create();
+
+    char* other = "\x00\x14";
+    size_t other_len = 2;
+    value_t other_val = 7;
+    u = hattrie_get(T, other, other_len);
+    *u = other_val;
+
+    char* key = "\x00\x14\x00";
+    size_t key_len = 3;
+    value_t key_val = 14;
+    u = hattrie_get(T, key, key_len);
+    *u = key_val;
+
+    u = hattrie_tryget(T, other, other_len);
+    if (*u != other_val) {
+        fprintf(stderr, "[error] can't store NUL byte keys!\n");
+        passed = false;
+    }
+
+    u = hattrie_tryget(T, key, key_len);
+    if (*u != key_val) {
+        fprintf(stderr, "[error] NUL byte keys overwrite each other!\n");
+        passed = false;
+    }
+    hattrie_free(T);
+
+    fprintf(stderr, "done.\n");
+    return passed;
+}
 
 
 
 int main()
 {
-    test_trie_non_ascii();
-
+    unsigned int errors = 0;
     setup();
-    test_hattrie_insert();
-    test_hattrie_iteration();
+    if (test_hattrie_insert()) {
+        if (!test_hattrie_iteration()) {
+            errors += 1;
+        }
+    } else {
+        errors += 2;  // account for failure of test_hattrie_insert
+    }
     teardown();
 
     setup();
-    test_hattrie_insert();
-    test_hattrie_sorted_iteration();
+    if (test_hattrie_insert()) {
+        if (!test_hattrie_sorted_iteration()) {
+            errors += 1;
+        }
+    } else {
+        errors += 1;  // test_hattrie_insert already failed above
+    }
     teardown();
 
-    return 0;
+    setup();
+    if (test_hattrie_insert()) {
+        if (!test_hattrie_prefix_iteration()) {
+            errors += 1;
+        }
+    } else {
+        errors += 1;  // test_hattrie_insert already failed above
+    }
+    teardown();
+
+    if (!test_hattrie_non_ascii()) { errors += 1; }
+    if (!test_hattrie_odd_keys()) { errors += 1; }
+
+    return errors;
 }

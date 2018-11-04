@@ -57,10 +57,10 @@ void teardown()
 }
 
 
-void test_ahtable_insert()
+bool test_ahtable_insert()
 {
     fprintf(stderr, "inserting %zu keys ... \n", k);
-
+    bool passed = true;
     size_t i, j;
     value_t* u;
     value_t  v;
@@ -80,6 +80,7 @@ void test_ahtable_insert()
         if (*u != v) {
             fprintf(stderr, "[error] tally mismatch (reported: %lu, correct: %lu)\n",
                             *u, v);
+            passed = false;
         }
     }
 
@@ -93,19 +94,21 @@ void test_ahtable_insert()
         u = ahtable_tryget(T, xs[i], strlen(xs[i]));
         if (u) {
             fprintf(stderr, "[error] deleted node found in ahtable\n");
+            passed = false;
         }
     }
 
     fprintf(stderr, "done.\n");
+    return passed;
 }
 
 
-void test_ahtable_iteration()
+bool test_ahtable_iteration()
 {
     fprintf(stderr, "iterating through %zu keys ... \n", k);
 
     ahtable_iter_t* i = ahtable_iter_begin(T, false);
-
+    bool passed = true;
     size_t count = 0;
     value_t* u;
     value_t  v;
@@ -123,9 +126,11 @@ void test_ahtable_iteration()
         if (*u != v) {
             if (v == 0) {
                 fprintf(stderr, "[error] incorrect iteration (%lu, %lu)\n", *u, v);
+                passed = false;
             }
             else {
                 fprintf(stderr, "[error] incorrect iteration tally (%lu, %lu)\n", *u, v);
+                passed = false;
             }
         }
 
@@ -139,11 +144,13 @@ void test_ahtable_iteration()
     if (count != M->m) {
         fprintf(stderr, "[error] iterated through %zu element, expected %zu\n",
                 count, M->m);
+        passed = false;
     }
 
     ahtable_iter_free(i);
 
     fprintf(stderr, "done.\n");
+    return passed;
 }
 
 
@@ -154,12 +161,12 @@ int cmpkey(const char* a, size_t ka, const char* b, size_t kb)
 }
 
 
-void test_ahtable_sorted_iteration()
+bool test_ahtable_sorted_iteration()
 {
     fprintf(stderr, "iterating in order through %zu keys ... \n", k);
 
     ahtable_iter_t* i = ahtable_iter_begin(T, true);
-
+    bool passed = true;
     size_t count = 0;
     value_t* u;
     value_t  v;
@@ -178,6 +185,7 @@ void test_ahtable_sorted_iteration()
         key = ahtable_iter_key(i, &len);
         if (prev_key != NULL && cmpkey(prev_key, prev_len, key, len) > 0) {
             fprintf(stderr, "[error] iteration is not correctly ordered.\n");
+            passed = false;
         }
 
         u  = ahtable_iter_val(i);
@@ -186,9 +194,11 @@ void test_ahtable_sorted_iteration()
         if (*u != v) {
             if (v == 0) {
                 fprintf(stderr, "[error] incorrect iteration (%lu, %lu)\n", *u, v);
+                passed = false;
             }
             else {
                 fprintf(stderr, "[error] incorrect iteration tally (%lu, %lu)\n", *u, v);
+                passed = false;
             }
         }
 
@@ -203,12 +213,14 @@ void test_ahtable_sorted_iteration()
     free(prev_key);
 
     fprintf(stderr, "done.\n");
+    return passed;
 }
 
-void test_ahtable_save_load()
+bool test_ahtable_save_load()
 {
     fprintf(stderr, "saving ahtable ... \n");
 
+    bool passed = true;
     FILE* fd_w = fopen("test.aht", "w");
     ahtable_save(T, fd_w);
     fclose(fd_w);
@@ -238,12 +250,15 @@ void test_ahtable_save_load()
 
         if (len1 != len2) {
             fprintf(stderr, "[error] key lengths don't match (%lu, %lu)\n", len1, len2);
+            passed = false;
         } else if (strncmp(k1, k2, len1) != 0) {
             fprintf(stderr, "[error] key strings don't match (%s, %s)\n", k1, k2);
+            passed = false;
         }
 
         if (*v1 != *v2) {
             fprintf(stderr, "[error] values don't match (%lu, %lu)\n", *v1, *v2);
+            passed = false;
         }
 
         ahtable_iter_next(i);
@@ -251,25 +266,43 @@ void test_ahtable_save_load()
     }
     ahtable_iter_free(i);
     ahtable_iter_free(j);
+    return passed;
 }
 
 
 int main()
 {
+    unsigned int errors = 0;
+
     setup();
-    test_ahtable_insert();
-    test_ahtable_iteration();
+    if (test_ahtable_insert()) {
+        if (!test_ahtable_iteration()) {
+            errors += 1;
+        }
+    } else {
+        errors += 2;
+    }
     teardown();
 
     setup();
-    test_ahtable_insert();
-    test_ahtable_sorted_iteration();
+    if (test_ahtable_insert()) {
+        if (!test_ahtable_sorted_iteration()) {
+            errors += 1;
+        }
+    } else {
+        errors += 1;
+    }
     teardown();
 
     setup();
-    test_ahtable_insert();
-    test_ahtable_save_load();
+    if (test_ahtable_insert()) {
+        if (!test_ahtable_save_load()) {
+            errors += 1;
+        }
+    } else {
+        errors += 1;
+    }
     teardown();
 
-    return 0;
+    return errors;
 }
