@@ -11,8 +11,9 @@
 #endif
 
 #if defined(__linux__) || defined(__CYGWIN__)
-
+#ifndef __USE_BSD
 # define __USE_BSD
+#endif
 # include <endian.h>
 
 #elif defined(__APPLE__)
