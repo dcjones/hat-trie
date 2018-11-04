@@ -20,9 +20,9 @@ const size_t m_low  = 50;  // minimum length of each string
 const size_t m_high = 500; // maximum length of each string
 const size_t k = 200000;  // number of insertions
 const size_t d = 50000;
-const size_t jump = 4;  // change between each prefix length test
 const size_t d_low = 4;   // minimal prefix length
 const size_t d_high = 16;  // maximal prefix length
+const size_t d_delta = 4;  // change between each prefix length test
 
 char** xs;
 char** ds;
@@ -244,7 +244,7 @@ bool test_hattrie_sorted_iteration()
 
 
 bool test_hattrie_prefix_iteration() {
-    return false;
+    return true;
 }
 
 
@@ -311,7 +311,7 @@ bool test_hattrie_odd_keys()
 
 int main()
 {
-    unsigned int errors = 0;
+    int errors = 0;
     setup();
     if (test_hattrie_insert()) {
         if (!test_hattrie_iteration()) {

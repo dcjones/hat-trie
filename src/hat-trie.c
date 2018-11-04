@@ -581,10 +581,6 @@ static void hattrie_iter_nextnode(hattrie_iter_t* i)
 }
 
 
-/* "Satisfied" here, meaning "able to continue".
- * Either the requested prefix matches more nodes,
- * or no prefix was specified, and more nodes can be iterated.
- */
 bool hattrie_iter_prefix_satisfied(hattrie_iter_t* i) {
     assert(i->prefixsize > 0);
     if (i->level >= i->prefixsize) {
@@ -607,10 +603,14 @@ bool hattrie_iter_prefix_satisfied(hattrie_iter_t* i) {
     }
 }
 
+
+/* "Satisfied" here, meaning "previously iterated key (i->key) matches prefix (i->prefix)".
+ * Either the requested prefix matches the key traversed during iteration,
+ * or no prefix was specified, and any node satisfies.
+ */
 static inline bool hattrie_iter_satisfied(hattrie_iter_t* i) {
-    if (hattrie_iter_finished(i)) {
-        return false;
-    } else if (i->prefixsize > 0) {
+    if (hattrie_iter_finished(i)) return true;  // early exit, nothing to check
+    if (i->prefixsize > 0) {
         return hattrie_iter_prefix_satisfied(i);
     } else {
         return true;
@@ -699,7 +699,7 @@ void hattrie_iter_next(hattrie_iter_t* i)
         }
 
         hattrie_iter_continue(i);
-    } while (hattrie_iter_satisfied(i));
+    } while (!hattrie_iter_satisfied(i));
 }
 
 

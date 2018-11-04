@@ -272,7 +272,7 @@ bool test_ahtable_save_load()
 
 int main()
 {
-    unsigned int errors = 0;
+    int errors = 0;
 
     setup();
     if (test_ahtable_insert()) {
