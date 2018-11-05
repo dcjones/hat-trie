@@ -585,9 +585,11 @@ bool hattrie_iter_prefix_satisfied(hattrie_iter_t* i) {
     assert(i->prefixsize > 0);
     if (i->level >= i->prefixsize) {
         // early exit, entire prefix fits inside parent key
-        return memcmp(i->key, i->prefix, i->prefixsize);
-    }
-    if (!memcmp(i->key, i->prefix, i->level)) {
+        return (memcmp(i->key, i->prefix, i->prefixsize) == 0);
+    } else if (i->has_nil_key) {
+        // early exit, child key is too short to match prefix
+        return false;
+    } else if (memcmp(i->key, i->prefix, i->level) != 0) {
         // early exit, parent key does not match prefix at this depth
         return false;
     }
@@ -599,7 +601,7 @@ bool hattrie_iter_prefix_satisfied(hattrie_iter_t* i) {
         // early exit, child key is too short to match prefix
         return false;
     } else {
-        return memcmp(key, i->prefix + i->level, i->prefixsize - i->level);
+        return (memcmp(key, i->prefix + i->level, i->prefixsize - i->level) == 0);
     }
 }
 
@@ -612,7 +614,7 @@ static inline bool hattrie_iter_satisfied(hattrie_iter_t* i) {
     if (hattrie_iter_finished(i)) return true;  // early exit, nothing to check
     if (i->prefixsize > 0) {
         return hattrie_iter_prefix_satisfied(i);
-    } else {
+    } else {  // no prefix specified, all nodes satisfy
         return true;
     }
 }
@@ -659,7 +661,7 @@ hattrie_iter_t* hattrie_iter_begin_with_prefix(const hattrie_t* T, bool sorted,
         i->prefixsize = prefixsize;
         i->prefix = malloc_or_die(i->prefixsize * sizeof(char));
         memcpy(i->prefix, prefix, i->prefixsize);
-        start = hattrie_find((hattrie_t*)T, &prefix, &prefixsize);
+        start = hattrie_find((hattrie_t*)i->T, &prefix, &i->prefixsize);
     } else {
         i->prefixsize = 0;
         i->prefix = NULL;

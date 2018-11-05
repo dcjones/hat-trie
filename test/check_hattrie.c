@@ -20,9 +20,9 @@ const size_t m_low  = 50;  // minimum length of each string
 const size_t m_high = 500; // maximum length of each string
 const size_t k = 200000;  // number of insertions
 const size_t d = 50000;
-const size_t d_low = 4;   // minimal prefix length
-const size_t d_high = 16;  // maximal prefix length
-const size_t d_delta = 4;  // change between each prefix length test
+const size_t d_low = 2;  // minimal prefix length
+const size_t d_high = 2;  // maximal prefix length
+const size_t d_delta = 1;  // change between each prefix length test
 
 char** xs;
 char** ds;
@@ -243,8 +243,91 @@ bool test_hattrie_sorted_iteration()
 }
 
 
-bool test_hattrie_prefix_iteration() {
-    return true;
+bool test_hattrie_prefix_iteration()
+{
+    bool passed = true;
+    hattrie_t* P;
+
+    hattrie_iter_t* i;
+    hattrie_iter_t* prefixes;
+    size_t count, compare, found;
+    value_t* u;
+
+    size_t len;
+    char* p;
+    const char* key;
+    const char* prefix;
+
+    for (size_t size = d_low; size <= d_high; size += d_delta) {
+        fprintf(stderr, "iterating through %zu keys by prefixes of length %ld ... \n",
+                k, size);
+        P = hattrie_create();
+        p = malloc(size * sizeof(char));
+        i = hattrie_iter_begin(T, false);
+
+        while (!hattrie_iter_finished(i)) {
+            key = hattrie_iter_key(i, &len);
+
+            if (len >= size) {
+                count++;
+                memcpy(p, key, size);
+                u = hattrie_get(P, p, size);
+                *u += 1;
+            }
+
+            hattrie_iter_next(i);
+        }
+        hattrie_iter_free(i);
+        free(p);
+
+        compare = 0;
+        prefixes = hattrie_iter_begin(P, false);
+        while(!hattrie_iter_finished(prefixes)) {
+            prefix = hattrie_iter_key(prefixes, &size);
+            found = 0;
+
+            i = hattrie_iter_begin_with_prefix(T, false, prefix, size);
+            while(!hattrie_iter_finished(i)) {
+                key = hattrie_iter_key(i, &len);
+                found++;
+                if (memcmp(key, prefix, size) != 0) {
+                    fprintf(stderr,
+                            "[error] iterated through element %.*s... via prefix %.*s.\n",
+                            ((int)size * 3) / 2, key, (int)size, prefix);
+                    passed = false;
+                }
+                hattrie_iter_next(i);
+            }
+            hattrie_iter_free(i);
+
+            u = hattrie_tryget(P, prefix, size);
+            if (u) {
+                if (*u != found) {
+                    fprintf(stderr,
+                            "[error] iterated through %zu elements for prefix %.*s, expected %zu.\n",
+                            found, (int)size, prefix, *u);
+                    passed = false;
+                }
+            } else {
+                fprintf(stderr, "[error] iterated through a prefix that shouldn't exist.\n");
+                passed = false;
+            }
+            compare += found;
+
+            hattrie_iter_next(prefixes);
+        }
+        hattrie_iter_free(prefixes);
+
+        if (compare != count) {
+            fprintf(stderr, "[error] iterated through %zu elements, expected %zu.\n", compare, count);
+            passed = false;
+        }
+
+        hattrie_free(P);
+    }
+
+    fprintf(stderr, "done.\n");
+    return passed;
 }
 
 
