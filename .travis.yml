@@ -4,3 +4,4 @@ compiler:
     - gcc
 before_script: autoreconf -i
 script: ./configure && make && make check
+after_failure: grep "^\[error\]" test/test-suite.log | head -n 50
