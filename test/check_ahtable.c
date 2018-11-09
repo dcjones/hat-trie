@@ -272,37 +272,23 @@ bool test_ahtable_save_load()
 
 int main()
 {
-    int errors = 0;
+    bool passed = true;
 
     setup();
-    if (test_ahtable_insert()) {
-        if (!test_ahtable_iteration()) {
-            errors += 1;
-        }
-    } else {
-        errors += 2;
-    }
+    passed &= test_ahtable_insert();
+    passed &= test_ahtable_iteration();
     teardown();
 
     setup();
-    if (test_ahtable_insert()) {
-        if (!test_ahtable_sorted_iteration()) {
-            errors += 1;
-        }
-    } else {
-        errors += 1;
-    }
+    passed &= test_ahtable_insert();
+    passed &= test_ahtable_sorted_iteration();
     teardown();
 
     setup();
-    if (test_ahtable_insert()) {
-        if (!test_ahtable_save_load()) {
-            errors += 1;
-        }
-    } else {
-        errors += 1;
-    }
+    passed &= test_ahtable_insert();
+    passed &= test_ahtable_save_load();
     teardown();
 
-    return errors;
+    if (passed) return 0;
+    return 1;
 }

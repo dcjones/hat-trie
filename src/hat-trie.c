@@ -661,7 +661,7 @@ hattrie_iter_t* hattrie_iter_begin_with_prefix(const hattrie_t* T, bool sorted,
         i->prefixsize = prefixsize;
         i->prefix = malloc_or_die(i->prefixsize * sizeof(char));
         memcpy(i->prefix, prefix, i->prefixsize);
-        start = hattrie_find((hattrie_t*)i->T, &prefix, &i->prefixsize);
+        start = hattrie_find((hattrie_t*)T, &prefix, &prefixsize);
     } else {
         i->prefixsize = 0;
         i->prefix = NULL;

@@ -20,8 +20,8 @@ const size_t m_low  = 50;  // minimum length of each string
 const size_t m_high = 500; // maximum length of each string
 const size_t k = 200000;  // number of insertions
 const size_t d = 50000;
-const size_t d_low = 2;  // minimal prefix length
-const size_t d_high = 2;  // maximal prefix length
+const size_t d_low = 1;  // minimal prefix length
+const size_t d_high = 4;  // maximal prefix length
 const size_t d_delta = 1;  // change between each prefix length test
 
 char** xs;
@@ -253,14 +253,17 @@ bool test_hattrie_prefix_iteration()
     size_t count, compare, found;
     value_t* u;
 
+    size_t fix;
     size_t len;
+    size_t size;
     char* p;
     const char* key;
     const char* prefix;
 
-    for (size_t size = d_low; size <= d_high; size += d_delta) {
+    for (size = d_low; size <= d_high; size += d_delta) {
         fprintf(stderr, "iterating through %zu keys by prefixes of length %ld ... \n",
                 k, size);
+        count = 0;
         P = hattrie_create();
         p = malloc(size * sizeof(char));
         i = hattrie_iter_begin(T, false);
@@ -269,7 +272,7 @@ bool test_hattrie_prefix_iteration()
             key = hattrie_iter_key(i, &len);
 
             if (len >= size) {
-                count++;
+                ++count;
                 memcpy(p, key, size);
                 u = hattrie_get(P, p, size);
                 *u += 1;
@@ -277,39 +280,49 @@ bool test_hattrie_prefix_iteration()
 
             hattrie_iter_next(i);
         }
+
         hattrie_iter_free(i);
         free(p);
 
         compare = 0;
         prefixes = hattrie_iter_begin(P, false);
         while(!hattrie_iter_finished(prefixes)) {
-            prefix = hattrie_iter_key(prefixes, &size);
-            found = 0;
+            prefix = hattrie_iter_key(prefixes, &fix);
+            if (size != fix) {
+                fprintf(stderr,
+                        "[error] iterated over prefix [%.*s] of length %zu, expected length %zu.\n",
+                        (int)fix, prefix, fix, size);
+                passed = false;
+                hattrie_iter_next(prefixes);
+                continue;
+            }
 
-            i = hattrie_iter_begin_with_prefix(T, false, prefix, size);
+            found = 0;
+            i = hattrie_iter_begin_with_prefix(T, false, prefix, fix);
             while(!hattrie_iter_finished(i)) {
                 key = hattrie_iter_key(i, &len);
-                found++;
-                if (memcmp(key, prefix, size) != 0) {
+                ++found;
+                if (memcmp(key, prefix, fix) != 0) {
                     fprintf(stderr,
-                            "[error] iterated through element %.*s... via prefix %.*s.\n",
-                            ((int)size * 3) / 2, key, (int)size, prefix);
+                            "[error] iterated through element [%.*s...] via prefix [%.*s].\n",
+                            ((int)fix * 3) / 2, key, (int)fix, prefix);
                     passed = false;
                 }
                 hattrie_iter_next(i);
             }
             hattrie_iter_free(i);
 
-            u = hattrie_tryget(P, prefix, size);
+            u = hattrie_iter_val(prefixes);
             if (u) {
                 if (*u != found) {
                     fprintf(stderr,
-                            "[error] iterated through %zu elements for prefix %.*s, expected %zu.\n",
-                            found, (int)size, prefix, *u);
+                            "[error] iterated through %zu elements for prefix [%.*s], expected %zu.\n",
+                            found, (int)fix, prefix, *u);
                     passed = false;
                 }
             } else {
-                fprintf(stderr, "[error] iterated through a prefix that shouldn't exist.\n");
+                fprintf(stderr, "[error] iterated through prefix [%.*s], which shouldn't exist.\n",
+                        (int)fix, prefix);
                 passed = false;
             }
             compare += found;
@@ -394,39 +407,26 @@ bool test_hattrie_odd_keys()
 
 int main()
 {
-    int errors = 0;
+    bool passed = true;
+
     setup();
-    if (test_hattrie_insert()) {
-        if (!test_hattrie_iteration()) {
-            errors += 1;
-        }
-    } else {
-        errors += 2;  // account for failure of test_hattrie_insert
-    }
+    passed &= test_hattrie_insert();
+    passed &= test_hattrie_iteration();
     teardown();
 
     setup();
-    if (test_hattrie_insert()) {
-        if (!test_hattrie_sorted_iteration()) {
-            errors += 1;
-        }
-    } else {
-        errors += 1;  // test_hattrie_insert already failed above
-    }
+    passed &= test_hattrie_insert();
+    passed &= test_hattrie_sorted_iteration();
     teardown();
 
     setup();
-    if (test_hattrie_insert()) {
-        if (!test_hattrie_prefix_iteration()) {
-            errors += 1;
-        }
-    } else {
-        errors += 1;  // test_hattrie_insert already failed above
-    }
+    passed &= test_hattrie_insert();
+    passed &= test_hattrie_prefix_iteration();
     teardown();
 
-    if (!test_hattrie_non_ascii()) { errors += 1; }
-    if (!test_hattrie_odd_keys()) { errors += 1; }
+    passed &= test_hattrie_non_ascii();
+    passed &= test_hattrie_odd_keys();
 
-    return errors;
+    if (passed) return 0;
+    return 1;
 }
