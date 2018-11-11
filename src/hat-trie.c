@@ -661,7 +661,7 @@ hattrie_iter_t* hattrie_iter_begin_with_prefix(const hattrie_t* T, bool sorted,
         i->prefixsize = prefixsize;
         i->prefix = malloc_or_die(i->prefixsize * sizeof(char));
         memcpy(i->prefix, prefix, i->prefixsize);
-        start = hattrie_find((hattrie_t*)T, &prefix, &prefixsize);
+        start = T->root;  // hattrie_find((hattrie_t*)T, &prefix, &prefixsize);
     } else {
         i->prefixsize = 0;
         i->prefix = NULL;
@@ -690,7 +690,6 @@ void hattrie_iter_next(hattrie_iter_t* i)
 {
     do {
         if (hattrie_iter_finished(i)) return;
-
         if (i->i != NULL && !ahtable_iter_finished(i->i)) {
             ahtable_iter_next(i->i);
         }

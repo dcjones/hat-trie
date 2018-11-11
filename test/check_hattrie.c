@@ -20,7 +20,7 @@ const size_t m_low  = 50;  // minimum length of each string
 const size_t m_high = 500; // maximum length of each string
 const size_t k = 200000;  // number of insertions
 const size_t d = 50000;
-const size_t d_low = 1;  // minimal prefix length
+const size_t d_low = 0;  // minimal prefix length
 const size_t d_high = 4;  // maximal prefix length
 const size_t d_delta = 1;  // change between each prefix length test
 
@@ -261,8 +261,6 @@ bool test_hattrie_prefix_iteration()
     const char* prefix;
 
     for (size = d_low; size <= d_high; size += d_delta) {
-        fprintf(stderr, "iterating through %zu keys by prefixes of length %ld ... \n",
-                k, size);
         count = 0;
         P = hattrie_create();
         p = malloc(size * sizeof(char));
@@ -284,6 +282,8 @@ bool test_hattrie_prefix_iteration()
         hattrie_iter_free(i);
         free(p);
 
+        fprintf(stderr, "iterating through %zu keys by prefixes of length %ld ... \n",
+                count, size);
         compare = 0;
         prefixes = hattrie_iter_begin(P, false);
         while(!hattrie_iter_finished(prefixes)) {
@@ -304,8 +304,8 @@ bool test_hattrie_prefix_iteration()
                 ++found;
                 if (memcmp(key, prefix, fix) != 0) {
                     fprintf(stderr,
-                            "[error] iterated through element [%.*s...] via prefix [%.*s].\n",
-                            ((int)fix * 3) / 2, key, (int)fix, prefix);
+                            "[error] given prefix [%.*s], iterated over element [%.*s].\n",
+                            (int)fix, prefix, (int)len, key);
                     passed = false;
                 }
                 hattrie_iter_next(i);
