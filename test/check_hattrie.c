@@ -22,7 +22,7 @@ const size_t k = 200000;  // number of insertions
 const size_t d = 50000;
 const size_t d_low = 0;  // minimal prefix length
 const size_t d_high = 4;  // maximal prefix length
-const size_t d_delta = 1;  // change between each prefix length test
+const size_t d_delta = 2;  // change between each prefix length test
 
 char** xs;
 char** ds;
