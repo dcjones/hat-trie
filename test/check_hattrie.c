@@ -367,6 +367,16 @@ bool test_hattrie_non_ascii()
 }
 
 
+typedef struct {
+    const char* test;
+    size_t length;
+    value_t value;
+    bool seen;
+    bool valid;
+    const char* name;
+} edge_case_test;
+
+
 bool test_hattrie_odd_keys()
 {
     fprintf(stderr, "checking edge-case keys...\n");
@@ -374,29 +384,98 @@ bool test_hattrie_odd_keys()
     value_t* u;
     hattrie_t* T = hattrie_create();
 
-    char* other = "\x00\x14";
-    size_t other_len = 2;
-    value_t other_val = 7;
-    u = hattrie_get(T, other, other_len);
-    *u = other_val;
+    size_t test_count = 3;
+    edge_case_test tests[] = {
+        { .test = "", .length = 0, .value = 1, .seen = false, .valid = false,
+          .name = "empty" },
+        { .test = "\x00\x14", .length = 2, .value = 2, .seen = false, .valid = false,
+          .name = "NUL byte initialized" },
+        { .test = "\x00\x14\x00", .length = 3, .value = 3, .seen = false, .valid = false,
+          .name = "NUL byte terminated" }
+    };
 
-    char* key = "\x00\x14\x00";
-    size_t key_len = 3;
-    value_t key_val = 14;
-    u = hattrie_get(T, key, key_len);
-    *u = key_val;
-
-    u = hattrie_tryget(T, other, other_len);
-    if (*u != other_val) {
-        fprintf(stderr, "[error] can't store NUL byte keys!\n");
-        passed = false;
+    for (size_t test_index = 0; test_index < test_count; test_index++) {
+        u = hattrie_get(T, tests[test_index].test, tests[test_index].length);
+        *u = tests[test_index].value;
     }
 
-    u = hattrie_tryget(T, key, key_len);
-    if (*u != key_val) {
-        fprintf(stderr, "[error] NUL byte keys overwrite each other!\n");
-        passed = false;
+    for (size_t test_index = 0; test_index < test_count; test_index++) {
+        u = hattrie_tryget(T, tests[test_index].test, tests[test_index].length);
+        if (*u != tests[test_index].value) {
+            fprintf(stderr,
+                    "[error] can't store %s string keys!\n",
+                    tests[test_index].name);
+            passed = false;
+        }
     }
+
+    hattrie_iter_t* i = hattrie_iter_begin(T, false);
+    size_t verify_len;
+    value_t* verify_ptr;
+    value_t verify_val;
+    const char* verify_key;
+    while (!hattrie_iter_finished(i)) {
+        verify_key = hattrie_iter_key(i, &verify_len);
+        verify_ptr = hattrie_iter_val(i);
+        verify_val = *verify_ptr;
+
+        edge_case_test* matched_test = NULL;
+        for (size_t test_index = 0; test_index < test_count; test_index++) {
+            if (verify_len == tests[test_index].length &&
+                    memcmp(verify_key, tests[test_index].test, tests[test_index].length) == 0) {
+                matched_test = &tests[test_index];
+                break;
+            }
+        }
+        if (matched_test == NULL) {
+            fprintf(stderr, "[error] iterated over unknown edge-case key [ ");
+            for (size_t i = 0; i < verify_len; i++) {
+                fprintf(stderr, "0x%X ", verify_key[i]);
+            }
+            fprintf(stderr, "].\n");
+            passed = false;
+        } else if (matched_test->seen) {
+            fprintf(stderr, "[error] iterated over key [ ");
+            for (size_t i = 0; i < verify_len; i++) {
+                fprintf(stderr, "0x%X ", verify_key[i]);
+            }
+            fprintf(stderr, "] more than once!\n");
+            passed = false;
+        } else {
+            matched_test->seen = true;
+            if (verify_val == matched_test->value) {
+                matched_test->valid = true;
+            } else {
+                fprintf(stderr, "[error] value stored for key [ ");
+                for (size_t i = 0; i < verify_len; i++) {
+                    fprintf(stderr, "0x%X ", verify_key[i]);
+                }
+                fprintf(stderr, "] was incorrect.\n");
+                passed = false;
+            }
+        }
+        hattrie_iter_next(i);
+    }
+
+    for (uint8_t test_index = 0; test_index < test_count; test_index++) {
+        if (!tests[test_index].seen) {
+            fprintf(stderr, "[error] key [ ");
+            for (size_t i = 0; i < tests[test_index].length; i++) {
+                fprintf(stderr, "0x%X ", tests[test_index].test[i]);
+            }
+            fprintf(stderr, "] was never iterated over.\n");
+            passed = false;
+        } else if (!tests[test_index].valid) {
+            fprintf(stderr, "[error] key [ ");
+            for (size_t i = 0; i < tests[test_index].length; i++) {
+                fprintf(stderr, "0x%X ", tests[test_index].test[i]);
+            }
+            fprintf(stderr, "] was iterated, but with the wrong value.\n");
+            passed = false;
+        }
+    }
+
+    hattrie_iter_free(i);
     hattrie_free(T);
 
     fprintf(stderr, "done.\n");
@@ -409,23 +488,31 @@ int main()
 {
     bool passed = true;
 
-    setup();
-    passed &= test_hattrie_insert();
-    passed &= test_hattrie_iteration();
-    teardown();
+    if (passed)
+        passed &= test_hattrie_non_ascii();
+    if (passed)
+        passed &= test_hattrie_odd_keys();
 
-    setup();
-    passed &= test_hattrie_insert();
-    passed &= test_hattrie_sorted_iteration();
-    teardown();
+    if (passed) {
+        setup();
+        passed &= test_hattrie_insert();
+        passed &= test_hattrie_iteration();
+        teardown();
+    }
 
-    setup();
-    passed &= test_hattrie_insert();
-    passed &= test_hattrie_prefix_iteration();
-    teardown();
+    if (passed) {
+        setup();
+        passed &= test_hattrie_insert();
+        passed &= test_hattrie_sorted_iteration();
+        teardown();
+    }
 
-    passed &= test_hattrie_non_ascii();
-    passed &= test_hattrie_odd_keys();
+    if (passed) {
+        setup();
+        passed &= test_hattrie_insert();
+        passed &= test_hattrie_prefix_iteration();
+        teardown();
+    }
 
     if (passed) return 0;
     return 1;
