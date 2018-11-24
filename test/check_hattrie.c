@@ -384,14 +384,16 @@ bool test_hattrie_odd_keys()
     value_t* u;
     hattrie_t* T = hattrie_create();
 
-    size_t test_count = 3;
+    size_t test_count = 4;
     edge_case_test tests[] = {
         { .test = "", .length = 0, .value = 1, .seen = false, .valid = false,
           .name = "empty" },
         { .test = "\x00\x14", .length = 2, .value = 2, .seen = false, .valid = false,
           .name = "NUL byte initialized" },
-        { .test = "\x00\x14\x00", .length = 3, .value = 3, .seen = false, .valid = false,
-          .name = "NUL byte terminated" }
+        { .test = "\x14\x00", .length = 3, .value = 3, .seen = false, .valid = false,
+          .name = "NUL byte terminated" },
+        { .test = "\x00\x14\x00", .length = 4, .value = 4, .seen = false, .valid = false,
+          .name = "NUL byte surrounded" }
     };
 
     for (size_t test_index = 0; test_index < test_count; test_index++) {
