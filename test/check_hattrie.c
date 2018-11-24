@@ -15,6 +15,7 @@ void randstr(char* x, size_t len)
     }
 }
 
+const bool debug = false;  // enable or disable debug output
 const size_t n = 100000;  // how many unique strings
 const size_t m_low  = 50;  // minimum length of each string
 const size_t m_high = 500; // maximum length of each string
@@ -333,6 +334,10 @@ bool test_hattrie_prefix_iteration()
                             "[error] iterated through %zu elements for prefix [%.*s], expected %zu.\n",
                             found, (int)fix, prefix, *u);
                     passed = false;
+                } else if (debug) {
+                    fprintf(stderr,
+                            "[debug] iterated through %zu elements for prefix [%.*s], expected %zu.\n",
+                            found, (int)fix, prefix, *u);
                 }
             } else {
                 fprintf(stderr, "[error] iterated through prefix [%.*s], which shouldn't exist.\n",
@@ -348,6 +353,8 @@ bool test_hattrie_prefix_iteration()
         if (compare != count) {
             fprintf(stderr, "[error] iterated through %zu elements, expected %zu.\n", compare, count);
             passed = false;
+        } else if (debug) {
+            fprintf(stderr, "[debug] iterated through %zu elements, expected %zu.\n", compare, count);
         }
 
         hattrie_free(prefix_counts);

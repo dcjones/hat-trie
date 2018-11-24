@@ -661,12 +661,16 @@ hattrie_iter_t* hattrie_iter_begin_with_prefix(const hattrie_t* T, bool sorted,
 
     node_ptr start;
     if (prefixsize > 0) {
+        i->prefixsize = prefixsize;
         start = hattrie_find((hattrie_t*)T, &prefix, &prefixsize);
-        if (prefixsize > 0) {
-            i->prefixsize = prefixsize;
+        if (prefixsize > 0) {  // prefix not entirely satisfied
+            if (i->prefixsize == prefixsize) // entirely unsatisfied
+                start = T->root;  // TODO: optimize start from root behavior
+            else  // prefix partially satisfied by bucket
+                i->prefixsize = prefixsize;
             i->prefix = malloc_or_die(i->prefixsize * sizeof(char));
             memcpy(i->prefix, prefix, i->prefixsize);
-        } else {
+        } else {  // prefix entirely satisfied by bucket
             i->prefixsize = 0;
             i->prefix = NULL;
         }
