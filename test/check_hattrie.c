@@ -322,6 +322,10 @@ bool test_hattrie_prefix_iteration()
                             "        prefix string [%.*s], iterated over element string [%.*s].\n",
                             *index, *val, (int)fix, prefix, (int)len, key);
                     passed = false;
+                } else if (debug) {
+                    fprintf(stderr,
+                            "[debug] prefix string [%.*s], iterated over element string [%.*s].\n",
+                            (int)fix, prefix, (int)len, key);
                 }
                 hattrie_iter_next(i);
             }
