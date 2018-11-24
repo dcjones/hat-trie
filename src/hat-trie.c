@@ -375,7 +375,10 @@ value_t* hattrie_get(hattrie_t* T, const char* key, size_t len)
     node_ptr parent = T->root;
     assert(*parent.flag & NODE_TYPE_TRIE);
 
-    if (len == 0) return &parent.t->val;
+    if (len == 0) {
+        *parent.flag |= NODE_HAS_VAL;
+        return &parent.t->val;
+    }
 
     /* consume all trie nodes, now parent must be trie and child anything */
     node_ptr node = hattrie_consume(&parent, &key, &len, 0);
@@ -647,11 +650,11 @@ hattrie_iter_t* hattrie_iter_begin_with_prefix(const hattrie_t* T, bool sorted,
                                                const char* prefix, size_t prefixsize)
 {
     hattrie_iter_t* i = malloc_or_die(sizeof(hattrie_iter_t));
-    i->T = T;
-    i->sorted = sorted;
-    i->i = NULL;
+    i->T       = T;
+    i->sorted  = sorted;
+    i->i       = NULL;
     i->keysize = 16;
-    i->key = malloc_or_die(i->keysize * sizeof(char));
+    i->key     = malloc_or_die(i->keysize * sizeof(char));
     i->level   = 0;
     i->has_nil_key = false;
     i->nil_val     = 0;

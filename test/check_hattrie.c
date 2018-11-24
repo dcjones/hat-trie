@@ -373,6 +373,7 @@ typedef struct {
     value_t value;
     bool seen;
     bool valid;
+    bool skip;
     const char* name;
 } edge_case_test;
 
@@ -384,15 +385,22 @@ bool test_hattrie_odd_keys()
     value_t* u;
     hattrie_t* T = hattrie_create();
 
-    size_t test_count = 4;
+    size_t test_count = 5;
     edge_case_test tests[] = {
-        { .test = "", .length = 0, .value = 1, .seen = false, .valid = false,
+        { .test = "", .length = 0, .value = 0,
+          .seen = false, .valid = false, .skip = false,
           .name = "empty" },
-        { .test = "\x00\x14", .length = 2, .value = 2, .seen = false, .valid = false,
+        { .test = "\x00", .length = 1, .value = 1,
+          .seen = false, .valid = false, .skip = false,
+          .name = "empty terminated" },
+        { .test = "\x00\x14", .length = 2, .value = 2,
+          .seen = false, .valid = false, .skip = false,
           .name = "NUL byte initialized" },
-        { .test = "\x14\x00", .length = 3, .value = 3, .seen = false, .valid = false,
+        { .test = "\x14\x00", .length = 3, .value = 3,
+          .seen = false, .valid = false, .skip = false,
           .name = "NUL byte terminated" },
-        { .test = "\x00\x14\x00", .length = 4, .value = 4, .seen = false, .valid = false,
+        { .test = "\x00\x14\x00", .length = 4, .value = 4,
+          .seen = false, .valid = false, .skip = false,
           .name = "NUL byte surrounded" }
     };
 
@@ -405,8 +413,9 @@ bool test_hattrie_odd_keys()
         u = hattrie_tryget(T, tests[test_index].test, tests[test_index].length);
         if (*u != tests[test_index].value) {
             fprintf(stderr,
-                    "[error] can't store %s string keys!\n",
-                    tests[test_index].name);
+                    "[error] can't store %s string key with value %zu!\n",
+                    tests[test_index].name, tests[test_index].value);
+            tests[test_index].skip = true;
             passed = false;
         }
     }
@@ -452,7 +461,9 @@ bool test_hattrie_odd_keys()
                 for (size_t i = 0; i < verify_len; i++) {
                     fprintf(stderr, "0x%X ", verify_key[i]);
                 }
-                fprintf(stderr, "] was incorrect.\n");
+                fprintf(stderr,
+                        "] was incorrect. (expected %zu, got %zu)\n",
+                        matched_test->value, verify_val);
                 passed = false;
             }
         }
@@ -460,6 +471,8 @@ bool test_hattrie_odd_keys()
     }
 
     for (uint8_t test_index = 0; test_index < test_count; test_index++) {
+        if (tests[test_index].skip)
+            continue;
         if (!tests[test_index].seen) {
             fprintf(stderr, "[error] key [ ");
             for (size_t i = 0; i < tests[test_index].length; i++) {
@@ -483,7 +496,6 @@ bool test_hattrie_odd_keys()
     fprintf(stderr, "done.\n");
     return passed;
 }
-
 
 
 int main()
