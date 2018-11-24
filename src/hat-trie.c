@@ -653,7 +653,7 @@ hattrie_iter_t* hattrie_iter_begin_with_prefix(const hattrie_t* T, bool sorted,
     i->T       = T;
     i->sorted  = sorted;
     i->i       = NULL;
-    i->keysize = 16;
+    i->keysize = (prefixsize > 8) ? prefixsize * 2 : 16;
     i->key     = malloc_or_die(i->keysize * sizeof(char));
     i->level   = 0;
     i->has_nil_key = false;
@@ -661,10 +661,15 @@ hattrie_iter_t* hattrie_iter_begin_with_prefix(const hattrie_t* T, bool sorted,
 
     node_ptr start;
     if (prefixsize > 0) {
-        i->prefixsize = prefixsize;
-        i->prefix = malloc_or_die(i->prefixsize * sizeof(char));
-        memcpy(i->prefix, prefix, i->prefixsize);
-        start = T->root;  // hattrie_find((hattrie_t*)T, &prefix, &prefixsize);
+        start = hattrie_find((hattrie_t*)T, &prefix, &prefixsize);
+        if (prefixsize > 0) {
+            i->prefixsize = prefixsize;
+            i->prefix = malloc_or_die(i->prefixsize * sizeof(char));
+            memcpy(i->prefix, prefix, i->prefixsize);
+        } else {
+            i->prefixsize = 0;
+            i->prefix = NULL;
+        }
     } else {
         i->prefixsize = 0;
         i->prefix = NULL;
@@ -747,8 +752,9 @@ const char* hattrie_iter_key(hattrie_iter_t* i, size_t* len)
     }
     else subkey = ahtable_iter_key(i->i, &sublen);
 
-    if (i->keysize < i->level + sublen + 1) {
-        while (i->keysize < i->level + sublen + 1) i->keysize *= 2;
+    size_t desired = i->level + sublen + 1;
+    if (i->keysize < desired) {
+        while (i->keysize < desired) i->keysize *= 2;
         i->key = realloc_or_die(i->key, i->keysize * sizeof(char));
     }
 
