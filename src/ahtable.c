@@ -85,22 +85,22 @@ void ahtable_save(const ahtable_t* table, FILE* fd)
 
 /* Loads a 64-bit value from disk and casts it into a size_t, which may or may
  * not be 64-bit. As long as the loaded value fits inside size_t, we're good.
- * Returns 0 if the value didn't fit, 1 otherwise.
+ * Returns false if the value didn't fit, true otherwise.
  */
-static uint8_t read_u64bit_to_size_t(size_t* dest, FILE* fd)
+static bool read_u64bit_to_size_t(size_t* dest, FILE* fd)
 {
     uint64_t value;
     if (fread(&value, sizeof(uint64_t), 1, fd) != 1) {
-        printf("Unable to read 64-bit data from file\n");
-        return 0;
+        fprintf(stderr, "Unable to read 64-bit data from file\n");
+        return false;
     }
     value = be64toh(value);
     if (value > (size_t)-1) {
-        printf("Unable to load 64-bit data from file\n");
-        return 0;
+        fprintf(stderr, "Unable to load 64-bit data from file\n");
+        return false;
     } else {
         *dest = (size_t)value;
-        return 1;
+        return true;
     }
 }
 

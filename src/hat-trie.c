@@ -614,12 +614,8 @@ bool hattrie_iter_prefix_satisfied(hattrie_iter_t* i) {
  * or no prefix was specified, and any node satisfies.
  */
 static inline bool hattrie_iter_satisfied(hattrie_iter_t* i) {
-    if (hattrie_iter_finished(i)) return true;  // early exit, nothing to check
-    if (i->prefixsize > 0) {
-        return hattrie_iter_prefix_satisfied(i);
-    } else {  // no prefix specified, all nodes satisfy
-        return true;
-    }
+    return hattrie_iter_finished(i) || i->prefixsize == 0 ||
+        hattrie_iter_prefix_satisfied(i);
 }
 
 
